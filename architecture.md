@@ -1,23 +1,27 @@
 ```mermaid
 classDiagram
   class Species{
-        ID
-        Latin name
+        int  ID
+        string Latin name
     }
   class Languages{
-        ID
-        Language name
+        int ID
+        string name
     }
   class Pageviews{
-        ID
-        Timestamp ID
-        Language ID
-        Number of Pageviews
-        Species ID
+        int ID
+        int Timestamp ID
+        int Language ID
+        int Number of Pageviews
+        int Species ID
     }
   class Timestamps{
-        ID
-        Time
+        int ID
+        datetime Time
     }
+    %% Relationships (foreign keys)
+    Pageviews --> Species : Species ID
+    Pageviews --> Languages : Language ID
+    Pageviews --> Timestamps : Timestamp ID
 
 ```
