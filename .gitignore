@@ -2,3 +2,4 @@
 pageview_mammal_monthly.pkl
 database.db
 .env
+__pycache__
