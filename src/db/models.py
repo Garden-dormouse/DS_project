@@ -1,3 +1,11 @@
+"""
+ORM model definitions for the database schema.
+
+This module contains SQLAlchemy object-relational mapping (ORM) mappings for all database tables
+used by the application. Each class corresponds to a table in the database and defines both column
+mappings and relationships between tables.
+"""
+
 import datetime
 
 from sqlalchemy import String, Integer, DateTime, ForeignKey
@@ -5,6 +13,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
 
 class Species(Base):
+    """
+    ORM model that maps to the 'Species' table in the database.
+    """
     __tablename__ = "Species"
 
     ID: Mapped[int] = mapped_column("ID", Integer, primary_key=True)
@@ -13,6 +24,9 @@ class Species(Base):
     pageviews = relationship("Pageview", back_populates="species")
 
 class Language(Base):
+    """
+    ORM model that maps to the 'Languges' table in the database.
+    """
     __tablename__ = "Languages"
 
     ID: Mapped[int] = mapped_column("ID", Integer, primary_key=True)
@@ -21,6 +35,9 @@ class Language(Base):
     pageviews = relationship("Pageview", back_populates="language")
 
 class Timestamp(Base):
+    """
+    ORM model that maps to the 'Timestamps' table in the database.
+    """
     __tablename__ = "Timestamps"
 
     ID: Mapped[int] = mapped_column("ID", Integer, primary_key=True)
@@ -29,6 +46,10 @@ class Timestamp(Base):
     pageviews = relationship("Pageview", back_populates="timestamp")
 
 class Pageview(Base):
+    """
+    ORM model that maps to the 'Pageviews' table in the database. Each pageview record links a
+    timestamp, language, and species to a recorded number of pageviews.
+    """
     __tablename__ = "Pageviews"
 
     ID: Mapped[int] = mapped_column("ID", Integer, primary_key=True)
