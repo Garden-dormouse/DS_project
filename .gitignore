@@ -1,5 +1,5 @@
 /venv
 pageview_mammal_monthly.pkl
-database.db
+*.db
 .env
 __pycache__
