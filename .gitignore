@@ -1,0 +1,5 @@
+/venv
+*.pkl
+*.db
+.env
+__pycache__
