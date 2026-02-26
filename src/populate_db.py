@@ -44,22 +44,22 @@ with SessionFactory() as session:
     # )
 
     # Populating the database with data
-    with open("../Data wrangling/df_languages.pkl", "rb") as fileobject:
+    with open(os.path.join(os.getcwd(), "Data wrangling", "df_languages.pkl"), "rb") as fileobject:
         df_languages = pickle.load(fileobject)
     for index, row in df_languages.iterrows():
         language_service.add_language(row["language"])
 
-    with open("../Data wrangling/df_species.pkl", "rb") as fileobject:
+    with open(os.path.join(os.getcwd(), "Data wrangling", "df_species.pkl"), "rb") as fileobject:
         df_species = pickle.load(fileobject)
     for index, row in df_species.iterrows():
         species_service.add_species(row["latin_name"])
 
-    with open("../Data wrangling/df_time.pkl", "rb") as fileobject:
+    with open(os.path.join(os.getcwd(), "Data wrangling", "df_time.pkl"), "rb") as fileobject:
         df_time = pickle.load(fileobject)
     for index, row in df_time.iterrows():
         timestamp_service.add_timestamp(row["timestamp"])
 
-    with open("../Data wrangling/df_pageviews.pkl", "rb") as fileobject:
+    with open(os.path.join(os.getcwd(), "Data wrangling", "df_pageviews.pkl"), "rb") as fileobject:
         df_pageviews = pickle.load(fileobject)
 
     for index, row in df_pageviews.iterrows():
