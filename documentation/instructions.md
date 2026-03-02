@@ -17,4 +17,23 @@ Intitialize database with migrations:
 ```
 in project root:  python3 db/migrate.py
 ```
-
+Navigate to data_wrangling folder and make sure the pageview_mammal_monthly.pkl file is inside:
+```
+python3 datawrangle.py
+```
+Next, go back to the root and populate the database:
+```
+python3 src/populate_db.py
+```
+Install the dependencies for the frontend:
+```
+inside frontend folder: npm install
+```
+Finally, to run the application, start the backend in one terminal:
+```
+in root: python3 src/api.py
+```
+And open the frontend in another terminal:
+```
+in frontend folder: npm run dev
+```
