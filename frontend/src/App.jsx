@@ -25,7 +25,7 @@ export default function App() {
         setLoading(true);
         const [languagesData, monthsData] = await Promise.all([
           api.getLanguages(),
-          api.getAvailableMonths()
+          api.getMonths()
         ]);
         setLanguages(languagesData);
         setAvailableMonths(monthsData);
@@ -169,10 +169,6 @@ export default function App() {
           />
         </aside>
       </main>
-
-      <footer className="footer">
-        <span>Real-time data from Wikipedia Species Database</span>
-      </footer>
     </div>
   );
 }

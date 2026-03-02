@@ -17,17 +17,17 @@ export const api = {
     return response.json();
   },
 
-  async getTimeseries(filters = {}) {
-    const params = new URLSearchParams();
-    if (filters.speciesId) params.append('species_id', filters.speciesId);
-    if (filters.languageCodes) params.append('language_codes', filters.languageCodes.join(','));
-    if (filters.startDate) params.append('start_date', filters.startDate);
-    if (filters.endDate) params.append('end_date', filters.endDate);
+  // async getTimeseries(filters = {}) {
+  //   const params = new URLSearchParams();
+  //   if (filters.speciesId) params.append('species_id', filters.speciesId);
+  //   if (filters.languageCodes) params.append('language_codes', filters.languageCodes.join(','));
+  //   if (filters.startDate) params.append('start_date', filters.startDate);
+  //   if (filters.endDate) params.append('end_date', filters.endDate);
 
-    const response = await fetch(`${API_BASE_URL}/pageviews/timeseries?${params}`);
-    if (!response.ok) throw new Error('Failed to fetch timeseries');
-    return response.json();
-  },
+  //   const response = await fetch(`${API_BASE_URL}/pageviews/timeseries?${params}`);
+  //   if (!response.ok) throw new Error('Failed to fetch timeseries');
+  //   return response.json();
+  // },
 
   async getTopSpecies(filters = {}) {
     const params = new URLSearchParams();
@@ -41,17 +41,17 @@ export const api = {
     return response.json();
   },
 
-  async getPageviewsByCountry(filters = {}) {
-    const params = new URLSearchParams();
-    if (filters.speciesId) params.append('species_id', filters.speciesId);
-    if (filters.languageCodes) params.append('language_codes', filters.languageCodes.join(','));
-    if (filters.startDate) params.append('start_date', filters.startDate);
-    if (filters.endDate) params.append('end_date', filters.endDate);
+  // async getPageviewsByCountry(filters = {}) {
+  //   const params = new URLSearchParams();
+  //   if (filters.speciesId) params.append('species_id', filters.speciesId);
+  //   if (filters.languageCodes) params.append('language_codes', filters.languageCodes.join(','));
+  //   if (filters.startDate) params.append('start_date', filters.startDate);
+  //   if (filters.endDate) params.append('end_date', filters.endDate);
 
-    const response = await fetch(`${API_BASE_URL}/pageviews/by-country?${params}`);
-    if (!response.ok) throw new Error('Failed to fetch pageviews by country');
-    return response.json();
-  },
+  //   const response = await fetch(`${API_BASE_URL}/pageviews/country?${params}`);
+  //   if (!response.ok) throw new Error('Failed to fetch pageviews by country');
+  //   return response.json();
+  // },
 
   async getLanguagesMapData(filters = {}) {
     const params = new URLSearchParams();
@@ -63,9 +63,9 @@ export const api = {
     return response.json();
   },
 
-  async getAvailableMonths() {
+  async getMonths() {
     // Get list of available months from the database
-    const response = await fetch(`${API_BASE_URL}/timestamps/available-months`);
+    const response = await fetch(`${API_BASE_URL}/timestamps/months`);
     if (!response.ok) throw new Error('Failed to fetch available months');
     return response.json();
   },
