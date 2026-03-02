@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
-from db.models import Language
-from db.dao.abstract import LanguageDAO
+from db_module.models import Language
+from db_module.dao.abstract import LanguageDAO
+
 
 class SQLAlchemyLanguageDAO(LanguageDAO):
 

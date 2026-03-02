@@ -9,7 +9,8 @@ import datetime
 
 from abc import ABC, abstractmethod
 from typing import Iterable
-from db.models import Species, Language, Timestamp, Pageview
+from db_module.models import Species, Language, Timestamp, Pageview
+
 
 class SpeciesDAO(ABC):
     """
@@ -55,6 +56,7 @@ class SpeciesDAO(ABC):
         """
         pass
 
+
 class LanguageDAO(ABC):
     """
     Abstract data access interface for Language objects.
@@ -98,6 +100,7 @@ class LanguageDAO(ABC):
             Language: The newly created Language.
         """
         pass
+
 
 class TimestampDAO(ABC):
     """
@@ -143,6 +146,7 @@ class TimestampDAO(ABC):
         """
         pass
 
+
 class PageviewDAO(ABC):
     """
     Abstract data access interface for Pageview objects.
@@ -176,7 +180,11 @@ class PageviewDAO(ABC):
 
     @abstractmethod
     def create(
-        self, timestamp_ID: int, language_ID: int, species_ID: int, number_of_pageviews: int
+        self,
+        timestamp_ID: int,
+        language_ID: int,
+        species_ID: int,
+        number_of_pageviews: int,
     ) -> Pageview:
         """
         Create and persist a new Pageview.

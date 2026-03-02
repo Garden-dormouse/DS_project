@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
-from db.models import Species
-from db.dao.abstract import SpeciesDAO
+from db_module.models import Species
+from db_module.dao.abstract import SpeciesDAO
+
 
 class SQLAlchemySpeciesDAO(SpeciesDAO):
 

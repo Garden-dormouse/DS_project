@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
-from db.models import Pageview
-from db.dao.abstract import PageviewDAO
+from db_module.models import Pageview
+from db_module.dao.abstract import PageviewDAO
+
 
 class SQLAlchemyPageviewDAO(PageviewDAO):
 
@@ -14,13 +15,17 @@ class SQLAlchemyPageviewDAO(PageviewDAO):
         return self.session.query(Pageview).all()
 
     def create(
-        self, timestamp_ID: int, language_ID: int, species_ID:int, number_of_pageviews: int
+        self,
+        timestamp_ID: int,
+        language_ID: int,
+        species_ID: int,
+        number_of_pageviews: int,
     ) -> Pageview:
         pageview = Pageview(
             timestamp_ID=timestamp_ID,
             language_ID=language_ID,
             species_ID=species_ID,
-            number_of_pageviews=number_of_pageviews
+            number_of_pageviews=number_of_pageviews,
         )
         self.session.add(pageview)
         self.session.commit()

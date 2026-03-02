@@ -1,16 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { geoNaturalEarth1, geoPath } from "d3-geo";
 
-// Expect GeoJSON features with properties:
-// - iso_a3 / ISO_A3 / ADM0_A3 (varies by dataset)
-// - name / NAME / ADMIN (varies)
-//
-// If your geojson uses different keys, tweak getIso3/getName.
-
 export default function WorldMap({
   geojsonUrl = "/data/world.geojson",
   onCountryClick,
   selectedIso3,
+  highlightedCountries = [],
   valueByIso3 = {},
 }) {
   const width = 1200;
@@ -18,7 +13,7 @@ export default function WorldMap({
 
   const [countries, setCountries] = useState([]);
   const [error, setError] = useState("");
-  const [hover, setHover] = useState(null); // { name, iso3, x, y, value }
+  const [hover, setHover] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -63,6 +58,8 @@ export default function WorldMap({
   }, [valueByIso3]);
 
   function getIso3(feature) {
+    // Check feature.id first (most common in Natural Earth data)
+    if (feature.id) return feature.id;
     const p = feature.properties || {};
     return p.iso_a3 || p.ISO_A3 || p.ADM0_A3 || p.ISO3 || null;
   }
@@ -72,11 +69,15 @@ export default function WorldMap({
     return p.name || p.NAME || p.ADMIN || "Unknown";
   }
 
-  function fillForIso3(iso3) {
+  function fillForIso3(iso3, isHighlighted) {
     if (!iso3) return "rgba(255,255,255,0.03)";
+    
+    if (isHighlighted) {
+      return "rgba(251, 191, 36, 0.6)"; // Increased from 0.25 to 0.6 for visibility
+    }
+    
     const v = valueByIso3[iso3] ?? 0;
     const t = Math.min(1, v / maxValue);
-    // use alpha only (avoid choosing "specific colors" beyond basic readability)
     const a = 0.06 + 0.30 * t;
     return `rgba(96, 165, 250, ${a})`;
   }
@@ -112,20 +113,41 @@ export default function WorldMap({
             const iso3 = getIso3(feature);
             const name = getName(feature);
             const isSelected = iso3 && selectedIso3 === iso3;
+            const isHighlighted = iso3 && highlightedCountries.includes(iso3);
+            
+            let strokeColor;
+            let strokeWidth;
+            
+            if (isSelected) {
+              strokeColor = "rgba(52,211,153,0.9)";
+              strokeWidth = 1.6;
+            } else if (isHighlighted) {
+              strokeColor = "rgba(251, 191, 36, 1)"; // Increased to full opacity
+              strokeWidth = 2; // Increased from 1.3 to 2 for better visibility
+            } else {
+              strokeColor = "rgba(255,255,255,0.10)";
+              strokeWidth = 0.8;
+            }
 
             return (
               <path
                 key={idx}
                 d={d}
-                fill={fillForIso3(iso3)}
-                stroke={isSelected ? "rgba(52,211,153,0.9)" : "rgba(255,255,255,0.10)"}
-                strokeWidth={isSelected ? 1.6 : 0.8}
+                fill={fillForIso3(iso3, isHighlighted)}
+                stroke={strokeColor}
+                strokeWidth={strokeWidth}
                 onMouseMove={(e) => {
                   const v = iso3 ? (valueByIso3[iso3] ?? 0) : 0;
                   setHover({ name, iso3, x: e.clientX, y: e.clientY, value: v });
                 }}
                 onMouseLeave={() => setHover(null)}
-                onClick={() => iso3 && onCountryClick?.(iso3)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  console.log('Clicked country:', name, 'ISO3:', iso3);
+                  if (iso3 && onCountryClick) {
+                    onCountryClick(iso3);
+                  }
+                }}
                 style={{ cursor: iso3 ? "pointer" : "default" }}
               />
             );
@@ -155,10 +177,14 @@ export default function WorldMap({
             ISO3: <span className="mono">{hover.iso3 ?? "—"}</span>
           </div>
           <div style={{ color: "rgba(255,255,255,0.60)", marginTop: 6 }}>
-            (mock) intensity: <span className="mono">{Math.round(hover.value)}</span>
+            Total pageviews: <span className="mono">{formatNumber(hover.value)}</span>
           </div>
         </div>
       )}
     </div>
   );
+}
+
+function formatNumber(n) {
+  return new Intl.NumberFormat().format(Math.round(n));
 }

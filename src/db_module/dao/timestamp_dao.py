@@ -1,8 +1,9 @@
 import datetime
 
 from sqlalchemy.orm import Session
-from db.models import Timestamp
-from db.dao.abstract import TimestampDAO
+from db_module.models import Timestamp
+from db_module.dao.abstract import TimestampDAO
+
 
 class SQLAlchemyTimestampDAO(TimestampDAO):
 

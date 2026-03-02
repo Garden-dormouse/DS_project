@@ -22,6 +22,7 @@ class Species(Base):
     latin_name: Mapped[str] = mapped_column("Latin_name", String)
 
     pageviews = relationship("Pageview", back_populates="species")
+    # ranges = relationship("SpeciesRange", back_populates="species")  # Add when Species_Ranges table exists
 
 class Language(Base):
     """
@@ -33,6 +34,7 @@ class Language(Base):
     name: Mapped[str] = mapped_column("Name", String)
 
     pageviews = relationship("Pageview", back_populates="language")
+    # regions = relationship("LanguageRegion", back_populates="language")  # Add when Language_Regions table exists
 
 class Timestamp(Base):
     """

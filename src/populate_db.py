@@ -1,14 +1,13 @@
-import datetime
 import os
 import pickle
 
 from dotenv import load_dotenv
 
-from db.dao.language_dao import SQLAlchemyLanguageDAO
-from db.dao.pageview_dao import SQLAlchemyPageviewDAO
-from db.dao.species_dao import SQLAlchemySpeciesDAO
-from db.dao.timestamp_dao import SQLAlchemyTimestampDAO
-from db.engine import get_engine, get_session_factory
+from db_module.dao.language_dao import SQLAlchemyLanguageDAO
+from db_module.dao.pageview_dao import SQLAlchemyPageviewDAO
+from db_module.dao.species_dao import SQLAlchemySpeciesDAO
+from db_module.dao.timestamp_dao import SQLAlchemyTimestampDAO
+from db_module.engine import get_engine, get_session_factory
 from services.language_service import LanguageService
 from services.pageview_service import PageviewService
 from services.species_service import SpeciesService
@@ -44,22 +43,30 @@ with SessionFactory() as session:
     # )
 
     # Populating the database with data
-    with open(os.path.join(os.getcwd(), "Data wrangling", "df_languages.pkl"), "rb") as fileobject:
+    with open(
+        os.path.join(os.getcwd(), "data_wrangling", "df_languages.pkl"), "rb"
+    ) as fileobject:
         df_languages = pickle.load(fileobject)
     for index, row in df_languages.iterrows():
         language_service.add_language(row["language"])
 
-    with open(os.path.join(os.getcwd(), "Data wrangling", "df_species.pkl"), "rb") as fileobject:
+    with open(
+        os.path.join(os.getcwd(), "data_wrangling", "df_species.pkl"), "rb"
+    ) as fileobject:
         df_species = pickle.load(fileobject)
     for index, row in df_species.iterrows():
         species_service.add_species(row["latin_name"])
 
-    with open(os.path.join(os.getcwd(), "Data wrangling", "df_time.pkl"), "rb") as fileobject:
+    with open(
+        os.path.join(os.getcwd(), "data_wrangling", "df_time.pkl"), "rb"
+    ) as fileobject:
         df_time = pickle.load(fileobject)
     for index, row in df_time.iterrows():
         timestamp_service.add_timestamp(row["timestamp"])
 
-    with open(os.path.join(os.getcwd(), "Data wrangling", "df_pageviews.pkl"), "rb") as fileobject:
+    with open(
+        os.path.join(os.getcwd(), "data_wrangling", "df_pageviews.pkl"), "rb"
+    ) as fileobject:
         df_pageviews = pickle.load(fileobject)
 
     for index, row in df_pageviews.iterrows():
