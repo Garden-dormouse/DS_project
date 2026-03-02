@@ -13,6 +13,10 @@ from db_module.engine import get_engine, get_session_factory
 from db_module.models import Species, Language, Timestamp, Pageview
 from db_module.dao.species_dao import SQLAlchemySpeciesDAO
 from db_module.dao.language_dao import SQLAlchemyLanguageDAO
+from db_module.dao.pageview_dao import SQLAlchemyPageviewDAO
+from db_module.dao.timestamp_dao import SQLAlchemyTimestampDAO
+from services.pageview_service import PageviewService
+from services.timestamp_service import TimestampService
 
 load_dotenv()
 
@@ -115,42 +119,18 @@ def get_top_species():
     - language_code: Single language code
     - limit: Number of results (default 20)
     """
+    language_code = request.args.get("language_code")
+    limit = request.args.get("limit", default=20, type=int)
+
+    if not language_code:
+        return jsonify([])
     with SessionFactory() as session:
-        language_code = request.args.get("language_code")
-        limit = request.args.get("limit", default=20, type=int)
+        pageview_dao = SQLAlchemyPageviewDAO(session)
+        service = PageviewService(pageview_dao)
+        result = service.get_top_species_for_language(language_code, limit)
 
-        if not language_code:
-            return jsonify([])
-
-        query = (
-            session.query(
-                Species.ID,
-                Species.latin_name,
-                func.sum(Pageview.number_of_pageviews).label("total_pageviews"),
-            )
-            .join(Pageview, Species.ID == Pageview.species_ID)
-            .join(Language, Pageview.language_ID == Language.ID)
-            .filter(Language.name == language_code)
-        )
-
-        query = (
-            query.group_by(Species.ID, Species.latin_name)
-            .order_by(func.sum(Pageview.number_of_pageviews).desc())
-            .limit(limit)
-        )
-
-        results = query.all()
-
-        return jsonify(
-            [
-                {
-                    "id": species_id,
-                    "latin_name": latin_name,
-                    "pageviews": int(total_pageviews or 0),
-                }
-                for species_id, latin_name, total_pageviews in results
-            ]
-        )
+    return jsonify(result)
+        
 
 
 # @app.route("/api/pageviews/country", methods=["GET"])
@@ -226,53 +206,13 @@ def get_languages_map_data():
     Query params:
     - month: Specific month in YYYY-MM format (optional, if not specified shows all data)
     """
+    month = request.args.get("month")  # e.g., "2024-01"
     with SessionFactory() as session:
-        month = request.args.get("month")  # e.g., "2024-01"
+        pageview_dao = SQLAlchemyPageviewDAO(session)
+        service = PageviewService(pageview_dao)
+        result = service.get_languages_map_data(month)
 
-        query = (
-            session.query(
-                Language.name,
-                func.sum(Pageview.number_of_pageviews).label("total_pageviews"),
-            )
-            .join(Pageview, Language.ID == Pageview.language_ID)
-            .join(Timestamp, Pageview.timestamp_ID == Timestamp.ID)
-        )
-
-        # If specific month is requested, filter to that month
-        if month:
-            query = query.filter(func.strftime("%Y-%m", Timestamp.time) == month)
-
-        query = query.group_by(Language.name)
-
-        results = query.all()
-
-        # Map language codes to ISO3 country codes
-        lang_to_country = {
-            "en": "USA",
-            "fi": "FIN",
-            "sv": "SWE",
-            "fr": "FRA",
-            "de": "DEU",
-            "es": "ESP",
-            "zh": "CHN",
-            "ja": "JPN",
-            "pt": "PRT",
-            "it": "ITA",
-            "ru": "RUS",
-            "ar": "SAU",
-            "nl": "NLD",
-            "pl": "POL",
-            "tr": "TUR",
-            "ko": "KOR",
-        }
-
-        return jsonify(
-            {
-                lang_to_country.get(lang, lang.upper()): int(total_pageviews or 0)
-                for lang, total_pageviews in results
-            }
-        )
-
+    return jsonify(result)
 
 @app.route("/api/timestamps/months", methods=["GET"])
 def get_available_months():
@@ -281,13 +221,9 @@ def get_available_months():
     Returns: List of month strings in YYYY-MM format.
     """
     with SessionFactory() as session:
-        # Get distinct months from timestamps
-        query = session.query(
-            func.distinct(func.strftime("%Y-%m", Timestamp.time)).label("month")
-        ).order_by("month")
-
-        results = query.all()
-        months = [row.month for row in results if row.month]
+        timestamp_dao = SQLAlchemyTimestampDAO(session)
+        service = TimestampService(timestamp_dao)
+        months = service.get_available_months()
 
         return jsonify(months)
 

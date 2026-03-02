@@ -1,5 +1,6 @@
+from sqlalchemy import func
 from sqlalchemy.orm import Session
-from db_module.models import Pageview
+from db_module.models import Pageview, Language, Species, Timestamp
 from db_module.dao.abstract import PageviewDAO
 
 
@@ -13,6 +14,45 @@ class SQLAlchemyPageviewDAO(PageviewDAO):
 
     def get_all(self):
         return self.session.query(Pageview).all()
+
+    def get_top_species_by_language(
+        self, language_code: str, limit: int = 20
+    ) -> list[tuple[Species, int]]:
+        query = (
+            self.session.query(
+                Species,
+                func.sum(Pageview.number_of_pageviews).label("total_pageviews"),
+            )
+            .join(Pageview, Species.ID == Pageview.species_ID)
+            .join(Language, Pageview.language_ID == Language.ID)
+            .filter(Language.name == language_code)
+            .group_by(Species.ID)
+            .order_by(func.sum(Pageview.number_of_pageviews).desc())
+            .limit(limit)
+        )
+
+        results = query.all()
+        return [(species, total_pageviews or 0) for species, total_pageviews in results]
+
+    def get_total_pageviews_by_language(
+        self, month: str | None = None
+    ) -> list[tuple[str, int]]:
+        query = (
+            self.session.query(
+                Language.name,
+                func.sum(Pageview.number_of_pageviews).label("total_pageviews"),
+            )
+            .join(Pageview, Language.ID == Pageview.language_ID)
+            .join(Timestamp, Pageview.timestamp_ID == Timestamp.ID)
+        )
+
+        if month:
+            query = query.filter(func.strftime("%Y-%m", Timestamp.time) == month)
+
+        query = query.group_by(Language.name)
+
+        results = query.all()
+        return [(lang, total or 0) for lang, total in results]
 
     def create(
         self,

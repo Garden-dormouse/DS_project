@@ -134,6 +134,16 @@ class TimestampDAO(ABC):
         pass
 
     @abstractmethod
+    def get_available_months(self) -> list[str]:
+        """
+        Return a list of distinct months available in the timestamps table.
+
+        Returns:
+            list[str]: List of months in 'YYYY-MM' format.
+        """
+        pass
+
+    @abstractmethod
     def create(self, time: datetime.datetime) -> Timestamp:
         """
         Create and persist a new Timestamp.
@@ -175,6 +185,39 @@ class PageviewDAO(ABC):
 
         Returns:
             Iterable[Pageview]: All stored Pageviews.
+        """
+        pass
+
+    @abstractmethod
+    def get_top_species_by_language(
+        self, language_code: str, limit: int = 20
+    ) -> list[tuple[Species, int]]:
+        """
+        Retrieve top species by total pageviews for a given language.
+
+        Args:
+            language_code (str): The ISO 639 code of the language to filter pageviews by.
+            limit (int): Maximum number of species to return.
+
+        Returns:
+            list[tuple[Species, int]]: List of tuples containing the Species object and its total
+            pageviews, ordered descending by pageviews.
+        """
+        pass
+
+    @abstractmethod
+    def get_total_pageviews_by_language(
+        self, month: str | None = None
+    ) -> list[tuple[Language, int]]:
+        """
+        Retrieve all languages with their total pageviews with optional filter by month.
+
+        Args:
+            month (str | None): Optional month filter in 'YYYY-MM' format.
+
+        Returns:
+            list[tuple[str, int]]: List of tuples (language_code, total_pageviews)
+            pageviews
         """
         pass
 
