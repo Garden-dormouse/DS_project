@@ -1,6 +1,7 @@
 /venv
 *.pkl
 *.db
+*.geojson
 .env
 __pycache__
 languages.csv
