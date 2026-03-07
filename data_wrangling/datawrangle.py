@@ -1,8 +1,21 @@
+from urllib.request import urlretrieve
+
 import pickle
 
 import langcodes  # for two-letter ISO 639 language codes
 import csv
 import pandas as pd
+
+print("Downloading raw data")
+downloads = [
+    {
+        "url": "https://raw.githubusercontent.com/glottolog/glottolog-cldf/refs/heads/master/cldf/languages.csv",
+        "filename": "languages.csv"
+    }
+]
+
+for download in downloads:
+    urlretrieve(download["url"], download["filename"])
 
 print("Opening raw data")
 with open(

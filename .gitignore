@@ -3,3 +3,5 @@
 *.db
 .env
 __pycache__
+languages.csv
+iso-639-3-macrolanguages.tab
