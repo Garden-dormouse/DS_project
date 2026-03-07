@@ -89,12 +89,14 @@ class LanguageDAO(ABC):
         pass
 
     @abstractmethod
-    def create(self, name: str) -> Language:
+    def create(self, name: str, iso_639_3: str, glottocode: str) -> Language:
         """
         Create and persist a new Language.
 
         Args:
-            name (str): The ISO 639 code of the language.
+            name (str): The name of the language.
+            iso_639_3 (str): The ISO 639-3 code of the language.
+            glottocode (str): The Glottolog code for the language.
 
         Returns:
             Language: The newly created Language.

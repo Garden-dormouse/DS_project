@@ -48,7 +48,7 @@ with SessionFactory() as session:
     ) as fileobject:
         df_languages = pickle.load(fileobject)
     for index, row in df_languages.iterrows():
-        language_service.add_language(row["language"])
+        language_service.add_language(row["language"], row["iso639_3"], row["glottocode"])
 
     with open(
         os.path.join(os.getcwd(), "data_wrangling", "df_species.pkl"), "rb"

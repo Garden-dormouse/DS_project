@@ -1,19 +1,46 @@
 import pickle
 
 import langcodes  # for two-letter ISO 639 language codes
+import csv
 import pandas as pd
 
+print("Opening raw data")
 with open(
     "./pageview_mammal_monthly.pkl", "rb"
 ) as fileobject:  # path for your data location
     dct = pickle.load(fileobject)
 
+# Initialize ISO639P3 to Glottocode dict
+print("Mapping ISO 639-3 to Glottocode")
+iso_to_glotto = {}
+
+with open("./languages.csv", encoding="utf8") as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        iso = row["ISO639P3code"]
+        glotto = row["ID"]
+
+        if iso:
+            iso_to_glotto[iso] = glotto
+
+print("Mapping macrolanguages to individual languages")
+macro_to_individual = {}
+with open("./iso-639-3-macrolanguages.tab", encoding="utf8") as f:
+    next(f)
+    for line in f:
+        macro, individual, status = line.strip().split("\t")
+
+        # Change this when mapping to all individual languages
+        if macro not in macro_to_individual:
+            macro_to_individual[macro] = individual
 
 ### SPECIES - creating table
+print("Creating table 'species'")
 df_species = pd.DataFrame(list(dct.keys()))
 df_species.columns = ["latin_name"]
 
 ### TIME - creating table
+print("Creating table 'time'")
 list_time = list()
 
 for year_id in range(0, 11):  # hardcoded to be 2015-2025 right now, can be altered
@@ -33,6 +60,7 @@ df_time.columns = ["timestamp"]
 
 
 ### LANGUAGE - creating table
+print("Creating table 'language'")
 list_language_codes = list()
 # finding all the languages from the pageview data:
 for spec in df_species["latin_name"]:
@@ -47,8 +75,28 @@ df_languages["language"] = [
     for lang in df_languages["code"]
 ]
 
+def get_iso3(code):
+    try:
+        return langcodes.Language.get(code).to_alpha3()
+    except Exception:
+        return None
+
+df_languages["iso639_3"] = df_languages["code"].apply(get_iso3)
+
+def get_glottocode(iso):
+    if iso is None:
+        return None
+    
+    if iso in macro_to_individual:
+        return iso_to_glotto.get(macro_to_individual[iso])
+
+    return iso_to_glotto.get(iso)
+
+df_languages["glottocode"] = df_languages["iso639_3"].apply(get_glottocode)
+
 
 ### PAGEVIEWS - creating table
+print("Creating table 'pageviews'")
 species = list()
 timestamps = list()
 pageviews = list()
@@ -81,6 +129,7 @@ df_pageviews = pd.DataFrame(
 
 
 ### Saving tables as pickle files
+print("Saving tables to pickle files")
 print(df_species.dtypes)
 df_species.to_pickle("./df_species.pkl")
 

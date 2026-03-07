@@ -7,7 +7,7 @@ class LanguageService:
 
         self.language_dao = language_dao
 
-    def add_language(self, name: str):
+    def add_language(self, name: str, iso_639_3: str, glottocode: str):
 
 
-        return self.language_dao.create(name)
+        return self.language_dao.create(name, iso_639_3, glottocode)
