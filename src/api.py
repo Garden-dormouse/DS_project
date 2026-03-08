@@ -44,13 +44,16 @@ def get_languages():
     with SessionFactory() as session:
         language_dao = SQLAlchemyLanguageDAO(session)
         languages = language_dao.get_all()
-        
+
         # Simple deduplication by name
         seen = {}
         for lang in languages:
-            if lang.name not in seen:
-                seen[lang.name] = {"code": lang.name, "name": lang.name}
-        
+            if lang.glottocode and lang.glottocode not in seen:
+                seen[lang.glottocode] = {
+                    "code": lang.glottocode,  # Return glottocode for API calls
+                    "name": lang.name,  # Display name in UI
+                }
+
         return jsonify(list(seen.values()))
 
 
@@ -130,73 +133,6 @@ def get_top_species():
         result = service.get_top_species_for_language(language_code, limit)
 
     return jsonify(result)
-        
-
-
-# @app.route("/api/pageviews/country", methods=["GET"])
-# def get_pageviews_by_country():
-#     """
-#     Get pageviews aggregated by language (mock country mapping).
-#     Returns data suitable for map visualization.
-#     """
-#     with SessionFactory() as session:
-#         species_id = request.args.get("species_id", type=int)
-#         language_codes = request.args.get("language_codes", "").split(",")
-#         start_date = request.args.get("start_date")
-#         end_date = request.args.get("end_date")
-
-#         query = (
-#             session.query(
-#                 Language.name,
-#                 func.sum(Pageview.number_of_pageviews).label("total_pageviews"),
-#             )
-#             .join(Pageview, Language.ID == Pageview.language_ID)
-#             .join(Timestamp, Pageview.timestamp_ID == Timestamp.ID)
-#             .join(Species, Pageview.species_ID == Species.ID)
-#         )
-
-#         if species_id:
-#             query = query.filter(Pageview.species_ID == species_id)
-
-#         if language_codes and language_codes[0]:
-#             query = query.filter(Language.name.in_(language_codes))
-
-#         if start_date:
-#             query = query.filter(Timestamp.time >= start_date)
-
-#         if end_date:
-#             query = query.filter(Timestamp.time <= end_date)
-
-#         query = query.group_by(Language.name)
-
-#         results = query.all()
-
-#         # Map language codes to ISO3 country codes (simplified mapping)
-#         lang_to_country = {
-#             "en": "USA",
-#             "fi": "FIN",
-#             "sv": "SWE",
-#             "fr": "FRA",
-#             "de": "DEU",
-#             "es": "ESP",
-#             "zh": "CHN",
-#             "ja": "JPN",
-#             "pt": "PRT",
-#             "it": "ITA",
-#             "ru": "RUS",
-#             "ar": "SAU",
-#             "nl": "NLD",
-#             "pl": "POL",
-#             "tr": "TUR",
-#             "ko": "KOR",
-#         }
-
-#         return jsonify(
-#             {
-#                 lang_to_country.get(lang, lang.upper()): int(total_pageviews or 0)
-#                 for lang, total_pageviews in results
-#             }
-#         )
 
 
 @app.route("/api/languages/map-data", methods=["GET"])
@@ -213,6 +149,7 @@ def get_languages_map_data():
         result = service.get_languages_map_data(month)
 
     return jsonify(result)
+
 
 @app.route("/api/timestamps/months", methods=["GET"])
 def get_available_months():

@@ -48,7 +48,9 @@ with SessionFactory() as session:
     ) as fileobject:
         df_languages = pickle.load(fileobject)
     for index, row in df_languages.iterrows():
-        language_service.add_language(row["language"], row["iso639_3"], row["glottocode"])
+        language_service.add_language(
+            row["language"], row["iso639_3"], row["glottocode"]
+        )
 
     with open(
         os.path.join(os.getcwd(), "data_wrangling", "df_species.pkl"), "rb"
@@ -64,16 +66,37 @@ with SessionFactory() as session:
     for index, row in df_time.iterrows():
         timestamp_service.add_timestamp(row["timestamp"])
 
+    all_languages = language_dao.get_all()
+    language_lookup = {lang.name: lang.ID for lang in all_languages}
+
+    all_species = species_dao.get_all()
+    species_lookup = {s.latin_name: s.ID for s in all_species}
+
+    all_timestamps = timestamp_dao.get_all()
+    timestamp_lookup = {t.time: t.ID for t in all_timestamps}
+
     with open(
         os.path.join(os.getcwd(), "data_wrangling", "df_pageviews.pkl"), "rb"
     ) as fileobject:
         df_pageviews = pickle.load(fileobject)
 
     for index, row in df_pageviews.iterrows():
+        language_ID = language_lookup.get(row["language"])  # Use lookup
+        species_ID = species_lookup.get(row["species"])  # Use lookup
+        timestamp_ID = timestamp_lookup.get(row["timestamp"])  # Use lookup
+
+        # Skip rows where any lookup failed
+        if not language_ID or not species_ID or not timestamp_ID:
+            if index % 100 == 0:  # Log some skips
+                print(
+                    f"Skipping row {index}: lang={language_ID}, species={species_ID}, time={timestamp_ID}"
+                )
+            continue
+
         pageview_service.add_pageview(
-            timestamp_ID=12 + index,  # placeholder
-            language_ID=34 + index // 20,  # placeholder
-            species_ID=56 + index // 40,  # placeholder
+            timestamp_ID=timestamp_ID,
+            language_ID=language_ID,
+            species_ID=species_ID,
             number_of_pageviews=row["number_of_pageviews"],
         )
         if index == 10000:  # not doing all the 13 million rows right now

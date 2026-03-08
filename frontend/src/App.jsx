@@ -70,15 +70,13 @@ export default function App() {
     
     async function fetchLanguageData() {
       try {
-        // Fetch both top species and countries for this language
-        const [topSpeciesData, countries] = await Promise.all([
-          api.getTopSpeciesByLanguage(selectedLanguage, { limit: 20 }),
-          api.getLanguageCountries(selectedLanguage)
-        ]);
+         // Fetch top species for the selected language
+      const topSpeciesData = await api.getTopSpeciesByLanguage(selectedLanguage, { limit: 20 });
+      setTopSpecies(topSpeciesData);
+      
+      // Clear highlighted countries (feature not implemented)
+      setHighlightedCountries([]);
         
-        setTopSpecies(topSpeciesData);
-        setHighlightedCountries(countries);
-        console.log(`Language '${selectedLanguage}' is spoken in:`, countries);
       } catch (err) {
         console.error('Error fetching language data:', err);
       }

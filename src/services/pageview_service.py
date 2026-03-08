@@ -17,10 +17,12 @@ class PageviewService:
         Returns:
             list[dict]: List of dicts with 'id', 'latin_name', 'pageviews'.
         """
-        top_species = self.pageview_dao.get_top_species_by_language(language_code, limit)
+        top_species = self.pageview_dao.get_top_species_by_language(
+            language_code, limit
+        )
         return [
-            {"id": s.ID, "latin_name": s.latin_name, "pageviews": int(total)}
-            for s, total in top_species
+            {"id": species_id, "latin_name": latin_name, "pageviews": int(total)}
+            for species_id, latin_name, total in top_species
         ]
 
     def get_languages_map_data(self, month: str | None = None) -> dict[str, int]:
@@ -61,11 +63,15 @@ class PageviewService:
         }
 
     def add_pageview(
-        self, timestamp_ID: int, language_ID: int, species_ID: int, number_of_pageviews: int
+        self,
+        timestamp_ID: int,
+        language_ID: int,
+        species_ID: int,
+        number_of_pageviews: int,
     ):
         return self.pageview_dao.create(
             timestamp_ID=timestamp_ID,
             language_ID=language_ID,
             species_ID=species_ID,
-            number_of_pageviews=number_of_pageviews
+            number_of_pageviews=number_of_pageviews,
         )

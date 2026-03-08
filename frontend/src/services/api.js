@@ -29,18 +29,6 @@ export const api = {
   //   return response.json();
   // },
 
-  async getTopSpecies(filters = {}) {
-    const params = new URLSearchParams();
-    if (filters.languageCodes) params.append('language_codes', filters.languageCodes.join(','));
-    if (filters.startDate) params.append('start_date', filters.startDate);
-    if (filters.endDate) params.append('end_date', filters.endDate);
-    if (filters.limit) params.append('limit', filters.limit);
-
-    const response = await fetch(`${API_BASE_URL}/pageviews/top-species?${params}`);
-    if (!response.ok) throw new Error('Failed to fetch top species');
-    return response.json();
-  },
-
   // async getPageviewsByCountry(filters = {}) {
   //   const params = new URLSearchParams();
   //   if (filters.speciesId) params.append('species_id', filters.speciesId);

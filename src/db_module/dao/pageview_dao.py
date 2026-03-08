@@ -17,22 +17,26 @@ class SQLAlchemyPageviewDAO(PageviewDAO):
 
     def get_top_species_by_language(
         self, language_code: str, limit: int = 20
-    ) -> list[tuple[Species, int]]:
+    ) -> list[tuple[int, str, int]]:
         query = (
             self.session.query(
-                Species,
+                Species.ID,
+                Species.latin_name,
                 func.sum(Pageview.number_of_pageviews).label("total_pageviews"),
             )
             .join(Pageview, Species.ID == Pageview.species_ID)
             .join(Language, Pageview.language_ID == Language.ID)
             .filter(Language.glottocode == language_code)
-            .group_by(Species.ID)
+            .group_by(Species.ID, Species.latin_name)
             .order_by(func.sum(Pageview.number_of_pageviews).desc())
             .limit(limit)
         )
 
         results = query.all()
-        return [(species, total_pageviews or 0) for species, total_pageviews in results]
+        return [
+            (species_id, latin_name, total_pageviews or 0)
+            for species_id, latin_name, total_pageviews in results
+        ]
 
     def get_total_pageviews_by_language(
         self, month: str | None = None
