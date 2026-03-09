@@ -99,5 +99,3 @@ with SessionFactory() as session:
             species_ID=species_ID,
             number_of_pageviews=row["number_of_pageviews"],
         )
-        if index == 10000:  # not doing all the 13 million rows right now
-            break

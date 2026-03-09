@@ -28,7 +28,7 @@ export default function DetailsPanel({
           </div>
         ) : topSpecies.length === 0 ? (
           <div className="note" style={{ padding: "2rem", textAlign: "center" }}>
-            Loading species data...
+            No species data found for this language.
           </div>
         ) : (
           <div className="card">

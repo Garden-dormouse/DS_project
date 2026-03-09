@@ -8,30 +8,31 @@ import DetailsPanel from "./components/DetailsPanel.jsx";
 import { api } from "./services/api.js";
 
 export default function App() {
-  // ---- Global dashboard state (frontend-only) ----
   const [selectedIso3, setSelectedIso3] = useState(null);
-  const [selectedLanguage, setSelectedLanguage] = useState(null); // Language code like "en", "fi"
-  const [highlightedCountries, setHighlightedCountries] = useState([]); // ISO3 codes to highlight
-  const [selectedMonth, setSelectedMonth] = useState(null); // "2024-01" or null for "all months"
+  const [selectedLanguage, setSelectedLanguage] = useState(null); // glottocode
+  const [highlightedCountries, setHighlightedCountries] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState(null);
   const [languages, setLanguages] = useState([]);
   const [availableMonths, setAvailableMonths] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Load initial data
+  const [mapIntensityByIso3, setMapIntensityByIso3] = useState({});
+  const [topSpecies, setTopSpecies] = useState([]);
+
   useEffect(() => {
     async function loadData() {
       try {
         setLoading(true);
         const [languagesData, monthsData] = await Promise.all([
           api.getLanguages(),
-          api.getMonths()
+          api.getMonths(),
         ]);
-        setLanguages(languagesData);
-        setAvailableMonths(monthsData);
+        setLanguages(Array.isArray(languagesData) ? languagesData : []);
+        setAvailableMonths(Array.isArray(monthsData) ? monthsData : []);
       } catch (err) {
         setError(err.message);
-        console.error('Error loading data:', err);
+        console.error("Error loading data:", err);
       } finally {
         setLoading(false);
       }
@@ -39,84 +40,146 @@ export default function App() {
     loadData();
   }, []);
 
-  // ---- Fetch real data from API ----
-  const [mapIntensityByIso3, setMapIntensityByIso3] = useState({});
-  const [topSpecies, setTopSpecies] = useState([]);
-
-  // Load map data (all languages)
   useEffect(() => {
     async function fetchMapData() {
       try {
-        const filters = selectedMonth 
-          ? { month: selectedMonth }  // Show specific month
-          : {};  // Show all data
-        
+        const filters = selectedMonth ? { month: selectedMonth } : {};
         const mapData = await api.getLanguagesMapData(filters);
-        setMapIntensityByIso3(mapData);
+        setMapIntensityByIso3(mapData || {});
       } catch (err) {
-        console.error('Error fetching map data:', err);
+        console.error("Error fetching map data:", err);
       }
     }
     fetchMapData();
   }, [selectedMonth]);
 
-  // Load top species when a language is selected
   useEffect(() => {
     if (!selectedLanguage) {
       setTopSpecies([]);
       setHighlightedCountries([]);
+      setSelectedIso3(null);
       return;
     }
-    
+
     async function fetchLanguageData() {
       try {
-         // Fetch top species for the selected language
-      const topSpeciesData = await api.getTopSpeciesByLanguage(selectedLanguage, { limit: 20 });
-      setTopSpecies(topSpeciesData);
-      
-      // Clear highlighted countries (feature not implemented)
-      setHighlightedCountries([]);
-        
+        const [topSpeciesData, countries] = await Promise.all([
+          api.getTopSpeciesByLanguage(selectedLanguage, { limit: 20 }),
+          api.getLanguageCountries(selectedLanguage),
+        ]);
+
+        const safeCountries = Array.isArray(countries) ? countries : [];
+
+        setTopSpecies(Array.isArray(topSpeciesData) ? topSpeciesData : []);
+        setHighlightedCountries(safeCountries);
+        setSelectedIso3(safeCountries.length > 0 ? safeCountries[0] : null);
+
+        if (safeCountries.length > 0) {
+          setSelectedIso3(safeCountries[0]);
+        }
       } catch (err) {
-        console.error('Error fetching language data:', err);
+        console.error("Error fetching language data:", err);
+        setTopSpecies([]);
+        setHighlightedCountries([]);
       }
     }
+
     fetchLanguageData();
   }, [selectedLanguage]);
 
-  // Build reverse mapping: ISO3 -> language (for click handling)
-  const iso3ToLanguage = useMemo(() => {
-    const mapping = {
-      "USA": "en", "GBR": "en", "CAN": "en", "AUS": "en",
-      "FIN": "fi", 
-      "SWE": "sv",
-      "FRA": "fr", "BEL": "fr",
-      "DEU": "de", "AUT": "de", "CHE": "de",
-      "ESP": "es", "MEX": "es", "ARG": "es",
-      "CHN": "zh",
-      "JPN": "ja",
-      "PRT": "pt", "BRA": "pt",
-      "ITA": "it",
-      "RUS": "ru",
-      "SAU": "ar", "EGY": "ar",
-      "NLD": "nl",
-      "POL": "pl",
-      "TUR": "tr",
-      "KOR": "ko",
+  // Country -> language NAME
+  const iso3ToLanguageName = useMemo(() => {
+    return {
+      USA: "English",
+      GBR: "English",
+      CAN: "English",
+      AUS: "English",
+      NZL: "English",
+      IRL: "English",
+
+      FIN: "Finnish",
+
+      SWE: "Swedish",
+      NOR: "Swedish",
+
+      FRA: "French",
+      BEL: "French",
+      CHE: "French",
+      LUX: "French",
+
+      DEU: "German",
+      AUT: "German",
+      LIE: "German",
+
+      ESP: "Spanish",
+      MEX: "Spanish",
+      ARG: "Spanish",
+      COL: "Spanish",
+      PER: "Spanish",
+      VEN: "Spanish",
+      CHL: "Spanish",
+
+      CHN: "Chinese",
+      TWN: "Chinese",
+      SGP: "Chinese",
+
+      JPN: "Japanese",
+
+      PRT: "Portuguese",
+      BRA: "Portuguese",
+
+      ITA: "Italian",
+
+      RUS: "Russian",
+      BLR: "Russian",
+      KAZ: "Russian",
+
+      SAU: "Arabic",
+      EGY: "Arabic",
+      ARE: "Arabic",
+      JOR: "Arabic",
+      LBN: "Arabic",
+
+      NLD: "Dutch",
+      POL: "Polish",
+      TUR: "Turkish",
+      KOR: "Korean",
     };
-    return mapping;
   }, []);
+
+  const selectedLanguageObj = useMemo(() => {
+    return languages.find((l) => l.code === selectedLanguage) || null;
+  }, [languages, selectedLanguage]);
+
+  const selectedLanguageName = selectedLanguageObj?.name || null;
 
   const handleCountryClick = (iso3) => {
     setSelectedIso3(iso3);
-    const langCode = iso3ToLanguage[iso3];
-    if (langCode) {
-      setSelectedLanguage(langCode);
+
+    const languageName = iso3ToLanguageName[iso3];
+    if (!languageName) return;
+
+    const matchedLanguage = languages.find((l) => l.name === languageName);
+    if (matchedLanguage) {
+      setSelectedLanguage(matchedLanguage.code); // glottocode
     }
   };
 
-  if (loading) return <div className="app"><div style={{padding: '2rem'}}>Loading data from database...</div></div>;
-  if (error) return <div className="app"><div style={{padding: '2rem', color: 'red'}}>Error: {error}</div></div>;
+  if (loading) {
+    return (
+      <div className="app">
+        <div style={{ padding: "2rem" }}>Loading data from database...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="app">
+        <div style={{ padding: "2rem", color: "red" }}>Error: {error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="app">
@@ -124,7 +187,9 @@ export default function App() {
         <div className="topbar__left">
           <div className="brand">
             <div className="brand__title">Wikipedia Species Interest Dashboard</div>
-            <div className="brand__subtitle">Explore species pageviews by language and region</div>
+            <div className="brand__subtitle">
+              Explore species pageviews by language and region
+            </div>
           </div>
         </div>
 
@@ -133,7 +198,7 @@ export default function App() {
             {selectedMonth ? `Month: ${selectedMonth}` : "All Months"}
           </div>
           <div className="pill">
-            {selectedLanguage ? `Language: ${selectedLanguage}` : "Select a country"}
+            {selectedLanguageName ? `Language: ${selectedLanguageName}` : "Select a language"}
           </div>
         </div>
       </header>
@@ -162,7 +227,7 @@ export default function App() {
 
         <aside className="panel panel--right">
           <DetailsPanel
-            selectedLanguage={selectedLanguage}
+            selectedLanguage={selectedLanguageName || selectedLanguage}
             topSpecies={topSpecies}
           />
         </aside>
