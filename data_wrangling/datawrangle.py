@@ -10,7 +10,7 @@ print("Downloading raw data")
 downloads = [
     {
         "url": "https://raw.githubusercontent.com/glottolog/glottolog-cldf/refs/heads/master/cldf/languages.csv",
-        "filename": "languages.csv"
+        "filename": "languages.csv",
     }
 ]
 
@@ -56,7 +56,7 @@ df_species.columns = ["latin_name"]
 print("Creating table 'time'")
 list_time = list()
 
-for year_id in range(0, 11):  # hardcoded to be 2015-2025 right now, can be altered
+for year_id in range(0, 12):  # hardcoded to be 2015-2026 right now, can be altered
     year = str(2015 + year_id)
     for month_id in range(1, 13):
         month = f"{month_id:02}"
@@ -67,6 +67,8 @@ for year_id in range(0, 11):  # hardcoded to be 2015-2025 right now, can be alte
             time_str, format="%Y%m%d%H"
         )  # input example: 2015070100
         list_time.append(datetime)
+        if year == "2026" and month == "01":
+            break
 
 df_time = pd.DataFrame(list_time)
 df_time.columns = ["timestamp"]
@@ -88,22 +90,26 @@ df_languages["language"] = [
     for lang in df_languages["code"]
 ]
 
+
 def get_iso3(code):
     try:
         return langcodes.Language.get(code).to_alpha3()
     except Exception:
         return None
 
+
 df_languages["iso639_3"] = df_languages["code"].apply(get_iso3)
+
 
 def get_glottocode(iso):
     if iso is None:
         return None
-    
+
     if iso in macro_to_individual:
         return iso_to_glotto.get(macro_to_individual[iso])
 
     return iso_to_glotto.get(iso)
+
 
 df_languages["glottocode"] = df_languages["iso639_3"].apply(get_glottocode)
 

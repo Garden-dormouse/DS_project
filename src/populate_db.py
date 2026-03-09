@@ -85,17 +85,12 @@ with SessionFactory() as session:
         species_ID = species_lookup.get(row["species"])  # Use lookup
         timestamp_ID = timestamp_lookup.get(row["timestamp"])  # Use lookup
 
-        # Skip rows where any lookup failed
-        if not language_ID or not species_ID or not timestamp_ID:
-            if index % 100 == 0:  # Log some skips
-                print(
-                    f"Skipping row {index}: lang={language_ID}, species={species_ID}, time={timestamp_ID}"
-                )
-            continue
-
         pageview_service.add_pageview(
             timestamp_ID=timestamp_ID,
             language_ID=language_ID,
             species_ID=species_ID,
             number_of_pageviews=row["number_of_pageviews"],
         )
+
+        if index == 20_000:  # Limit to first 20000 rows for testing
+            break
