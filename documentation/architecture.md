@@ -2,26 +2,28 @@
 classDiagram
   class Species{
         int  ID
-        string Latin name
+        string Latin_name
     }
   class Languages{
         int ID
-        string name
+        string Name
+        string ISO_639_3
+        string Glottocode
     }
   class Pageviews{
         int ID
-        int Timestamp ID
-        int Language ID
-        int Number of Pageviews
-        int Species ID
+        int Timestamp_ID
+        int Language_ID
+        int Number_of_Pageviews
+        int Species_ID
     }
   class Timestamps{
         int ID
         datetime Time
     }
     %% Relationships (foreign keys)
-    Pageviews --> Species : Species ID
-    Pageviews --> Languages : Language ID
-    Pageviews --> Timestamps : Timestamp ID
+    Pageviews --> Species : Species_ID
+    Pageviews --> Languages : Language_ID
+    Pageviews --> Timestamps : Timestamp_ID
 
 ```
