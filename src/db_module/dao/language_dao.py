@@ -1,0 +1,21 @@
+from sqlalchemy.orm import Session
+from db_module.models import Language
+from db_module.dao.abstract import LanguageDAO
+
+
+class SQLAlchemyLanguageDAO(LanguageDAO):
+
+    def __init__(self, session: Session):
+        self.session = session
+
+    def get_by_id(self, language_ID: int) -> Language | None:
+        return self.session.get(Language, language_ID)
+
+    def get_all(self):
+        return self.session.query(Language).all()
+
+    def create(self, name: str, iso_639_3: str, glottocode: str) -> Language:
+        language = Language(name=name, iso_639_3=iso_639_3, glottocode=glottocode)
+        self.session.add(language)
+        self.session.commit()
+        return language

@@ -1,0 +1,11 @@
+BEGIN TRANSACTION;
+
+ALTER TABLE Languages
+ADD COLUMN ISO_639_3 TEXT;
+
+ALTER TABLE Languages
+ADD COLUMN Glottocode TEXT;
+
+PRAGMA user_version = 3;
+
+COMMIT;
