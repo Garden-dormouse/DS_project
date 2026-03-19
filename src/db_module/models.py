@@ -33,7 +33,7 @@ class Language(Base):
     ID: Mapped[int] = mapped_column("ID", Integer, primary_key=True)
     name: Mapped[str] = mapped_column("Name", String)
     iso_639_3: Mapped[str] = mapped_column("ISO_639_3", String)
-    glottocode: Mapped[str] = mapped_column("Glottocode", String)
+    language_range: Mapped[str] = mapped_column("Language_Range", String)
 
     pageviews = relationship("Pageview", back_populates="language")
     # regions = relationship("LanguageRegion", back_populates="language")  # Add when Language_Regions table exists

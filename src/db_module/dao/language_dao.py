@@ -14,8 +14,8 @@ class SQLAlchemyLanguageDAO(LanguageDAO):
     def get_all(self):
         return self.session.query(Language).all()
 
-    def create(self, name: str, iso_639_3: str, glottocode: str) -> Language:
-        language = Language(name=name, iso_639_3=iso_639_3, glottocode=glottocode)
+    def create(self, name: str, iso_639_3: str, language_range: str) -> Language:
+        language = Language(name=name, iso_639_3=iso_639_3, language_range=language_range)
         self.session.add(language)
         self.session.commit()
         return language

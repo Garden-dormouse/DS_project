@@ -1,8 +1,10 @@
 import os
 import pickle
+import json
 
 from dotenv import load_dotenv
 
+from urllib.request import urlretrieve
 from db_module.dao.language_dao import SQLAlchemyLanguageDAO
 from db_module.dao.pageview_dao import SQLAlchemyPageviewDAO
 from db_module.dao.species_dao import SQLAlchemySpeciesDAO
@@ -20,6 +22,24 @@ DB_PATH = os.getenv("DB_PATH")
 DB_URL = f"sqlite:///{DB_PATH}"
 engine = get_engine(DB_URL)
 SessionFactory = get_session_factory(engine)
+
+# Download and index GeoJSON
+GEOJSON_URL = (
+    "https://raw.githubusercontent.com/Glottography/asher2007world/refs/heads/main/cldf/contemporary/languages.geojson"
+)
+GEOJSON_PATH = "./data_wrangling/languages.geojson"
+
+urlretrieve(GEOJSON_URL, GEOJSON_PATH)
+
+with open(GEOJSON_PATH, encoding="utf8") as f:
+    geo = json.load(f)
+
+# Build lookup: Glottocode -> list of features
+geo_by_glottocode = {}
+for feature in geo["features"]:
+    g = feature["properties"].get("cldf:languageReference")
+    if g:
+        geo_by_glottocode.setdefault(g, []).append(feature)
 
 with SessionFactory() as session:
     species_dao = SQLAlchemySpeciesDAO(session)
@@ -47,9 +67,23 @@ with SessionFactory() as session:
         os.path.join(os.getcwd(), "data_wrangling", "df_languages.pkl"), "rb"
     ) as fileobject:
         df_languages = pickle.load(fileobject)
+
+    def get_language_range(glottocode_string):
+        """Combine polygons for all Glottocodes in semicolon-separated string"""
+        if not glottocode_string:
+            return None
+        polygons = []
+        for g in glottocode_string.split(";"):
+            polygons.extend(geo_by_glottocode.get(g, []))
+        if not polygons:
+            return None
+        return json.dumps({"type": "FeatureCollection", "features": polygons})
+
+    df_languages["language_range"] = df_languages["glottocode"].apply(get_language_range)
+
     for index, row in df_languages.iterrows():
         language_service.add_language(
-            row["language"], row["iso639_3"], row["glottocode"]
+            row["language"], row["iso639_3"], row["language_range"]
         )
 
     with open(

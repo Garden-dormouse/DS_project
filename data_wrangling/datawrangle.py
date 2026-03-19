@@ -1,4 +1,5 @@
 from urllib.request import urlretrieve
+from collections import defaultdict
 
 import pickle
 
@@ -37,15 +38,12 @@ with open("./languages.csv", encoding="utf8") as f:
             iso_to_glotto[iso] = glotto
 
 print("Mapping macrolanguages to individual languages")
-macro_to_individual = {}
+macro_to_individuals = defaultdict(set)
 with open("./iso-639-3-macrolanguages.tab", encoding="utf8") as f:
     next(f)
     for line in f:
         macro, individual, status = line.strip().split("\t")
-
-        # Change this when mapping to all individual languages
-        if macro not in macro_to_individual:
-            macro_to_individual[macro] = individual
+        macro_to_individuals[macro].add(individual)
 
 ### SPECIES - creating table
 print("Creating table 'species'")
@@ -101,17 +99,28 @@ def get_iso3(code):
 df_languages["iso639_3"] = df_languages["code"].apply(get_iso3)
 
 
-def get_glottocode(iso):
+def get_glottocodes(iso):
     if iso is None:
-        return None
+        return set()
 
-    if iso in macro_to_individual:
-        return iso_to_glotto.get(macro_to_individual[iso])
+    # Collect all individual languages linked to a macrolanguage
+    if iso in macro_to_individuals:
+        return {
+            iso_to_glotto[ind]
+            for ind in macro_to_individuals[iso]
+            if ind in iso_to_glotto
+        }
 
-    return iso_to_glotto.get(iso)
+    # Direct match
+    if iso in iso_to_glotto:
+        return {iso_to_glotto[iso]}
 
+    return set()
 
-df_languages["glottocode"] = df_languages["iso639_3"].apply(get_glottocode)
+# Glottocodes as a semicolon-separated list
+df_languages["glottocode"] = df_languages["iso639_3"].apply(
+    lambda iso: ";".join(sorted(get_glottocodes(iso))) or None
+)
 
 
 ### PAGEVIEWS - creating table
