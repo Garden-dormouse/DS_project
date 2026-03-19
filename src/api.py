@@ -43,7 +43,7 @@ def get_languages():
     Returns:
     [
       {
-        "code": "<glottocode>",
+        "code": "<ISO 639-3>",
         "name": "<display language name>"
       }
     ]
@@ -54,9 +54,9 @@ def get_languages():
 
         seen = {}
         for lang in languages:
-            if lang.glottocode and lang.glottocode not in seen:
-                seen[lang.glottocode] = {
-                    "code": lang.glottocode,  # used by frontend for API calls
+            if lang.iso_639_3 and lang.iso_639_3 not in seen:
+                seen[lang.iso_639_3] = {
+                    "code": lang.iso_639_3,  # used by frontend for API calls
                     "name": lang.name,        # shown in dropdown/UI
                 }
 
@@ -69,7 +69,7 @@ def get_top_species():
     Get top species by pageviews for a specific language.
 
     Query params:
-    - language_code: glottocode
+    - language_code: ISO 639-3
     - limit: Number of results (default 20)
     """
     language_code = request.args.get("language_code")
@@ -123,103 +123,103 @@ def get_language_countries(language_code):
     """
     Get all countries where a specific language is spoken.
     Input:
-      language_code = glottocode
+      language_code = ISO 639-3
     Output:
       List of ISO3 country codes
     """
 
-    # glottocode -> ISO3 country list
+    # ISO 639-3 -> ISO3 country list
     # Adjust/add entries based on the languages you want to support in the UI.
-    glottocode_to_countries = {
+    iso_639_3_to_countries = {
         # English
-        "stan1293": ["USA", "GBR", "CAN", "AUS", "NZL", "IRL"],
+        "eng": ["USA", "GBR", "CAN", "AUS", "NZL", "IRL"],
 
         # Finnish
-        "finn1318": ["FIN"],
+        "fin": ["FIN"],
 
         # Swedish
-        "swed1254": ["SWE", "FIN"],
+        "swe": ["SWE", "FIN"],
 
         # French
-        "stan1290": ["FRA", "BEL", "CHE", "CAN", "LUX"],
+        "fra": ["FRA", "BEL", "CHE", "CAN", "LUX"],
 
         # German
-        "stan1295": ["DEU", "AUT", "CHE", "LIE"],
+        "deu": ["DEU", "AUT", "CHE", "LIE"],
 
         # Spanish
-        "stan1288": ["ESP", "MEX", "ARG", "COL", "PER", "VEN", "CHL"],
+        "spa": ["ESP", "MEX", "ARG", "COL", "PER", "VEN", "CHL"],
 
         # Mandarin / Chinese
-        "mand1415": ["CHN", "TWN", "SGP"],
+        "zho": ["CHN", "TWN", "SGP"],
 
         # Japanese
-        "nucl1643": ["JPN"],
+        "jpn": ["JPN"],
 
         # Portuguese
-        "port1283": ["PRT", "BRA"],
+        "por": ["PRT", "BRA"],
 
         # Italian
-        "ital1282": ["ITA", "CHE"],
+        "ita": ["ITA", "CHE"],
 
         # Russian
-        "russ1263": ["RUS", "BLR", "KAZ"],
+        "rus": ["RUS", "BLR", "KAZ"],
 
         # Arabic
-        "arab1395": ["SAU", "EGY", "ARE", "JOR", "LBN"],
+        "ara": ["SAU", "EGY", "ARE", "JOR", "LBN"],
 
         # Dutch
-        "dutc1256": ["NLD", "BEL"],
+        "nld": ["NLD", "BEL"],
 
         # Polish
-        "poli1260": ["POL"],
+        "pol": ["POL"],
 
         # Turkish
-        "nucl1301": ["TUR"],
+        "tur": ["TUR"],
 
         # Korean
-        "kore1280": ["KOR"],
+        "kor": ["KOR"],
 
         # Vietnamese
-        "viet1252": ["VNM"],
+        "vie": ["VNM"],
 
         # Hindi
-        "hind1269": ["IND"],
+        "hin": ["IND"],
 
         # Norwegian
-        "norw1258": ["NOR"],
+        "nor": ["NOR"],
 
         # Danish
-        "dani1284": ["DNK"],
+        "dan": ["DNK"],
 
         # Czech
-        "czec1258": ["CZE"],
+        "ces": ["CZE"],
 
         # Greek
-        "mode1248": ["GRC"],
+        "ell": ["GRC"],
 
         # Thai
-        "thai1261": ["THA"],
+        "tha": ["THA"],
 
         # Indonesian
-        "indo1316": ["IDN"],
+        "ind": ["IDN"],
 
         # Ukrainian
-        "ukra1253": ["UKR"],
+        "ukr": ["UKR"],
 
         # Romanian
-        "roma1327": ["ROU"],
+        "ron": ["ROU"],
 
         # Hungarian
-        "hung1274": ["HUN"],
+        "hun": ["HUN"],
 
         # Hebrew
-        "hebr1246": ["ISR"],
+        "heb": ["ISR"],
 
         # Persian
-        "west2369": ["IRN"],
+        "fas": ["IRN"],
     }
 
-    return jsonify(glottocode_to_countries.get(language_code, []))
+    return jsonify(iso_639_3_to_countries.get(language_code, []))
 
 
 if __name__ == "__main__":

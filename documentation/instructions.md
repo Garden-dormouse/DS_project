@@ -25,10 +25,6 @@ Next, go back to the root and populate the database:
 ```
 python3 src/populate_db.py
 ```
-and create the filtered GeoJSON file for language areas:
-```
-python3 src/filter_geojson.py
-```
 Install the dependencies for the frontend:
 ```
 inside frontend folder: npm install

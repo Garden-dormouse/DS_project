@@ -26,7 +26,7 @@ class SQLAlchemyPageviewDAO(PageviewDAO):
             )
             .join(Pageview, Species.ID == Pageview.species_ID)
             .join(Language, Pageview.language_ID == Language.ID)
-            .filter(Language.glottocode == language_code)
+            .filter(Language.iso_639_3 == language_code)
             .group_by(Species.ID, Species.latin_name)
             .order_by(func.sum(Pageview.number_of_pageviews).desc())
             .limit(limit)

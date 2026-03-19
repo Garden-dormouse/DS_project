@@ -9,7 +9,7 @@ import { api } from "./services/api.js";
 
 export default function App() {
   const [selectedIso3, setSelectedIso3] = useState(null);
-  const [selectedLanguage, setSelectedLanguage] = useState(null); // glottocode
+  const [selectedLanguage, setSelectedLanguage] = useState(null); // ISO 639-3
   const [highlightedCountries, setHighlightedCountries] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [languages, setLanguages] = useState([]);
@@ -161,7 +161,7 @@ export default function App() {
 
     const matchedLanguage = languages.find((l) => l.name === languageName);
     if (matchedLanguage) {
-      setSelectedLanguage(matchedLanguage.code); // glottocode
+      setSelectedLanguage(matchedLanguage.code); // ISO 639-3
     }
   };
 
