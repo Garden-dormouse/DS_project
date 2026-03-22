@@ -5,7 +5,6 @@ from db_module.dao.abstract import PageviewDAO
 
 
 class SQLAlchemyPageviewDAO(PageviewDAO):
-
     def __init__(self, session: Session):
         self.session = session
 
@@ -16,7 +15,11 @@ class SQLAlchemyPageviewDAO(PageviewDAO):
         return self.session.query(Pageview).all()
 
     def get_top_species_by_language(
-        self, language_code: str, limit: int = 20
+        self,
+        language_code: str,
+        limit: int = 20,
+        start_month: str | None = None,
+        end_month: str | None = None,
     ) -> list[tuple[int, str, int]]:
         query = (
             self.session.query(
@@ -26,8 +29,23 @@ class SQLAlchemyPageviewDAO(PageviewDAO):
             )
             .join(Pageview, Species.ID == Pageview.species_ID)
             .join(Language, Pageview.language_ID == Language.ID)
+<<<<<<< Updated upstream
             .filter(Language.iso_639_3 == language_code)
             .group_by(Species.ID, Species.latin_name)
+=======
+            .join(Timestamp, Pageview.timestamp_ID == Timestamp.ID)
+            .filter(Language.glottocode == language_code)
+        )
+
+        if start_month:
+            query = query.filter(func.strftime("%Y-%m", Timestamp.time) >= start_month)
+
+        if end_month:
+            query = query.filter(func.strftime("%Y-%m", Timestamp.time) <= end_month)
+
+        query = (
+            query.group_by(Species.ID, Species.latin_name)
+>>>>>>> Stashed changes
             .order_by(func.sum(Pageview.number_of_pageviews).desc())
             .limit(limit)
         )

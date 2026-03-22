@@ -54,10 +54,17 @@ def get_languages():
 
         seen = {}
         for lang in languages:
+<<<<<<< Updated upstream
             if lang.iso_639_3 and lang.iso_639_3 not in seen:
                 seen[lang.iso_639_3] = {
                     "code": lang.iso_639_3,  # used by frontend for API calls
                     "name": lang.name,        # shown in dropdown/UI
+=======
+            if lang.glottocode and lang.glottocode not in seen:
+                seen[lang.glottocode] = {
+                    "code": lang.glottocode,
+                    "name": lang.name,
+>>>>>>> Stashed changes
                 }
 
         return jsonify(list(seen.values()))
@@ -66,14 +73,18 @@ def get_languages():
 @app.route("/api/pageviews/top-species", methods=["GET"])
 def get_top_species():
     """
-    Get top species by pageviews for a specific language.
+    Get top species by pageviews for a specific language and optional month range.
 
     Query params:
     - language_code: ISO 639-3
     - limit: Number of results (default 20)
+    - start_month: YYYY-MM
+    - end_month: YYYY-MM
     """
     language_code = request.args.get("language_code")
     limit = request.args.get("limit", default=20, type=int)
+    start_month = request.args.get("start_month")
+    end_month = request.args.get("end_month")
 
     if not language_code:
         return jsonify([])
@@ -81,7 +92,12 @@ def get_top_species():
     with SessionFactory() as session:
         pageview_dao = SQLAlchemyPageviewDAO(session)
         service = PageviewService(pageview_dao)
-        result = service.get_top_species_for_language(language_code, limit)
+        result = service.get_top_species_for_language(
+            language_code=language_code,
+            limit=limit,
+            start_month=start_month,
+            end_month=end_month,
+        )
 
     return jsonify(result)
 
@@ -127,6 +143,7 @@ def get_language_countries(language_code):
     Output:
       List of ISO3 country codes
     """
+<<<<<<< Updated upstream
 
     # ISO 639-3 -> ISO3 country list
     # Adjust/add entries based on the languages you want to support in the UI.
@@ -217,6 +234,38 @@ def get_language_countries(language_code):
 
         # Persian
         "fas": ["IRN"],
+=======
+    glottocode_to_countries = {
+        "stan1293": ["USA", "GBR", "CAN", "AUS", "NZL", "IRL"],
+        "finn1318": ["FIN"],
+        "swed1254": ["SWE", "FIN"],
+        "stan1290": ["FRA", "BEL", "CHE", "CAN", "LUX"],
+        "stan1295": ["DEU", "AUT", "CHE", "LIE"],
+        "stan1288": ["ESP", "MEX", "ARG", "COL", "PER", "VEN", "CHL"],
+        "mand1415": ["CHN", "TWN", "SGP"],
+        "nucl1643": ["JPN"],
+        "port1283": ["PRT", "BRA"],
+        "ital1282": ["ITA", "CHE"],
+        "russ1263": ["RUS", "BLR", "KAZ"],
+        "arab1395": ["SAU", "EGY", "ARE", "JOR", "LBN"],
+        "dutc1256": ["NLD", "BEL"],
+        "poli1260": ["POL"],
+        "nucl1301": ["TUR"],
+        "kore1280": ["KOR"],
+        "viet1252": ["VNM"],
+        "hind1269": ["IND"],
+        "norw1258": ["NOR"],
+        "dani1284": ["DNK"],
+        "czec1258": ["CZE"],
+        "mode1248": ["GRC"],
+        "thai1261": ["THA"],
+        "indo1316": ["IDN"],
+        "ukra1253": ["UKR"],
+        "roma1327": ["ROU"],
+        "hung1274": ["HUN"],
+        "hebr1246": ["ISR"],
+        "west2369": ["IRN"],
+>>>>>>> Stashed changes
     }
 
     return jsonify(iso_639_3_to_countries.get(language_code, []))
