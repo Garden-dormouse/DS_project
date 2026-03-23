@@ -48,11 +48,7 @@ function formatRangeLabel(monthsInRange, availableMonths) {
 
 export default function App() {
   const [selectedIso3, setSelectedIso3] = useState(null);
-<<<<<<< Updated upstream
   const [selectedLanguage, setSelectedLanguage] = useState(null); // ISO 639-3
-=======
-  const [selectedLanguage, setSelectedLanguage] = useState(null);
->>>>>>> Stashed changes
   const [highlightedCountries, setHighlightedCountries] = useState([]);
 
   const [startMonth, setStartMonth] = useState(null);
@@ -224,11 +220,7 @@ export default function App() {
 
     const matchedLanguage = languages.find((l) => l.name === languageName);
     if (matchedLanguage) {
-<<<<<<< Updated upstream
       setSelectedLanguage(matchedLanguage.code); // ISO 639-3
-=======
-      setSelectedLanguage(matchedLanguage.code);
->>>>>>> Stashed changes
     }
   };
 

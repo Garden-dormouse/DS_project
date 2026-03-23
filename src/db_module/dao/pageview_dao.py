@@ -29,12 +29,8 @@ class SQLAlchemyPageviewDAO(PageviewDAO):
             )
             .join(Pageview, Species.ID == Pageview.species_ID)
             .join(Language, Pageview.language_ID == Language.ID)
-<<<<<<< Updated upstream
-            .filter(Language.iso_639_3 == language_code)
-            .group_by(Species.ID, Species.latin_name)
-=======
             .join(Timestamp, Pageview.timestamp_ID == Timestamp.ID)
-            .filter(Language.glottocode == language_code)
+            .filter(Language.iso_639_3 == language_code)
         )
 
         if start_month:
@@ -45,7 +41,6 @@ class SQLAlchemyPageviewDAO(PageviewDAO):
 
         query = (
             query.group_by(Species.ID, Species.latin_name)
->>>>>>> Stashed changes
             .order_by(func.sum(Pageview.number_of_pageviews).desc())
             .limit(limit)
         )

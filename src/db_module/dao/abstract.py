@@ -88,15 +88,16 @@ class LanguageDAO(ABC):
         """
         pass
 
+    
     @abstractmethod
-    def create(self, name: str, iso_639_3: str, language_range: str) -> Language:
+    def create(self, name: str, iso_639_3: str, glottocode: str) -> Language:
         """
         Create and persist a new Language.
 
         Args:
             name (str): The name of the language.
             iso_639_3 (str): The ISO 639-3 code of the language.
-            language_range (str): The GeoJSON dump with language range polygons.
+            glottocode (str): The Glottolog code for the language.
 
         Returns:
             Language: The newly created Language.

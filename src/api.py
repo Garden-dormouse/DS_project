@@ -54,17 +54,10 @@ def get_languages():
 
         seen = {}
         for lang in languages:
-<<<<<<< Updated upstream
             if lang.iso_639_3 and lang.iso_639_3 not in seen:
                 seen[lang.iso_639_3] = {
                     "code": lang.iso_639_3,  # used by frontend for API calls
                     "name": lang.name,        # shown in dropdown/UI
-=======
-            if lang.glottocode and lang.glottocode not in seen:
-                seen[lang.glottocode] = {
-                    "code": lang.glottocode,
-                    "name": lang.name,
->>>>>>> Stashed changes
                 }
 
         return jsonify(list(seen.values()))
@@ -143,7 +136,6 @@ def get_language_countries(language_code):
     Output:
       List of ISO3 country codes
     """
-<<<<<<< Updated upstream
 
     # ISO 639-3 -> ISO3 country list
     # Adjust/add entries based on the languages you want to support in the UI.
@@ -234,38 +226,6 @@ def get_language_countries(language_code):
 
         # Persian
         "fas": ["IRN"],
-=======
-    glottocode_to_countries = {
-        "stan1293": ["USA", "GBR", "CAN", "AUS", "NZL", "IRL"],
-        "finn1318": ["FIN"],
-        "swed1254": ["SWE", "FIN"],
-        "stan1290": ["FRA", "BEL", "CHE", "CAN", "LUX"],
-        "stan1295": ["DEU", "AUT", "CHE", "LIE"],
-        "stan1288": ["ESP", "MEX", "ARG", "COL", "PER", "VEN", "CHL"],
-        "mand1415": ["CHN", "TWN", "SGP"],
-        "nucl1643": ["JPN"],
-        "port1283": ["PRT", "BRA"],
-        "ital1282": ["ITA", "CHE"],
-        "russ1263": ["RUS", "BLR", "KAZ"],
-        "arab1395": ["SAU", "EGY", "ARE", "JOR", "LBN"],
-        "dutc1256": ["NLD", "BEL"],
-        "poli1260": ["POL"],
-        "nucl1301": ["TUR"],
-        "kore1280": ["KOR"],
-        "viet1252": ["VNM"],
-        "hind1269": ["IND"],
-        "norw1258": ["NOR"],
-        "dani1284": ["DNK"],
-        "czec1258": ["CZE"],
-        "mode1248": ["GRC"],
-        "thai1261": ["THA"],
-        "indo1316": ["IDN"],
-        "ukra1253": ["UKR"],
-        "roma1327": ["ROU"],
-        "hung1274": ["HUN"],
-        "hebr1246": ["ISR"],
-        "west2369": ["IRN"],
->>>>>>> Stashed changes
     }
 
     return jsonify(iso_639_3_to_countries.get(language_code, []))

@@ -6,3 +6,4 @@ Flask==3.1.0
 Flask-CORS==5.0.0
 langcodes==3.5.1
 language_data==1.4.0
+pytest == 8.4.2
