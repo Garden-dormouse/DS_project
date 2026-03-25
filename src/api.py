@@ -66,14 +66,18 @@ def get_languages():
 @app.route("/api/pageviews/top-species", methods=["GET"])
 def get_top_species():
     """
-    Get top species by pageviews for a specific language.
+    Get top species by pageviews for a specific language and optional month range.
 
     Query params:
     - language_code: ISO 639-3
     - limit: Number of results (default 20)
+    - start_month: YYYY-MM
+    - end_month: YYYY-MM
     """
     language_code = request.args.get("language_code")
     limit = request.args.get("limit", default=20, type=int)
+    start_month = request.args.get("start_month")
+    end_month = request.args.get("end_month")
 
     if not language_code:
         return jsonify([])
@@ -81,7 +85,12 @@ def get_top_species():
     with SessionFactory() as session:
         pageview_dao = SQLAlchemyPageviewDAO(session)
         service = PageviewService(pageview_dao)
-        result = service.get_top_species_for_language(language_code, limit)
+        result = service.get_top_species_for_language(
+            language_code=language_code,
+            limit=limit,
+            start_month=start_month,
+            end_month=end_month,
+        )
 
     return jsonify(result)
 

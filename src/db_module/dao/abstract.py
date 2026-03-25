@@ -88,6 +88,7 @@ class LanguageDAO(ABC):
         """
         pass
 
+    
     @abstractmethod
     def get_by_name(self, name: str) -> Language | None:
         """
@@ -122,7 +123,7 @@ class LanguageDAO(ABC):
         Args:
             name (str): The name of the language.
             iso_639_3 (str): The ISO 639-3 code of the language.
-            language_range (str): The GeoJSON dump with language range polygons.
+            glottocode (str): The Glottolog code for the language.
 
         Returns:
             Language: The newly created Language.

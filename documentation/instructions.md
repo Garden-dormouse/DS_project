@@ -37,3 +37,6 @@ And open the frontend in another terminal:
 ```
 in frontend folder: npm run dev
 ```
+Start the tests in root: 
+```
+pytest -q or pytest src/tests/ -v

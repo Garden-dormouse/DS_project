@@ -2,23 +2,24 @@ from db_module.dao.abstract import PageviewDAO
 
 
 class PageviewService:
-
     def __init__(self, pageview_dao: PageviewDAO):
         self.pageview_dao = pageview_dao
 
-    def get_top_species_for_language(self, language_code: str, limit: int = 20):
+    def get_top_species_for_language(
+        self,
+        language_code: str,
+        limit: int = 20,
+        start_month: str | None = None,
+        end_month: str | None = None,
+    ):
         """
-        Return top species by pageviews for a language.
-
-        Args:
-            language_code (str): The ISO 639 code of the language to filter pageviews by.
-            limit (int): Maximum number of species to return.
-
-        Returns:
-            list[dict]: List of dicts with 'id', 'latin_name', 'pageviews'.
+        Return top species by pageviews for a language within an optional month range.
         """
         top_species = self.pageview_dao.get_top_species_by_language(
-            language_code, limit
+            language_code=language_code,
+            limit=limit,
+            start_month=start_month,
+            end_month=end_month,
         )
         return [
             {"id": species_id, "latin_name": latin_name, "pageviews": int(total)}
@@ -28,14 +29,7 @@ class PageviewService:
     def get_languages_map_data(self, month: str | None = None) -> dict[str, int]:
         """
         Return total pageviews per language, mapped to ISO3 country codes.
-
-        Args:
-            month (str | None): Optional month filter in 'YYYY-MM' format.
-
-        Returns:
-            dict[str, int]: Mapping from ISO3 country code (or language code) to total pageviews.
         """
-        # Map language codes to ISO3 country codes
         lang_to_country = {
             "en": "USA",
             "fi": "FIN",

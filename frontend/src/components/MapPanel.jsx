@@ -2,15 +2,17 @@ import React from "react";
 import "./panel.css";
 import WorldMap from "../WorldMap.jsx";
 
-export default function MapPanel({ 
-  selectedIso3, 
+export default function MapPanel({
+  selectedIso3,
   highlightedCountries,
-  onCountryClick, 
-  mapIntensityByIso3, 
+  onCountryClick,
+  mapIntensityByIso3,
   geojsonUrl,
-  selectedMonth,
-  onMonthChange,
-  availableMonths 
+  startMonth,
+  endMonth,
+  onStartMonthChange,
+  onEndMonthChange,
+  availableMonths,
 }) {
   return (
     <div className="panelInner">
@@ -18,25 +20,41 @@ export default function MapPanel({
         <div>
           <div className="panelTitle">Language Activity Map</div>
           <div className="panelSubtitle">
-            {selectedMonth ? `Viewing: ${selectedMonth}` : "Viewing: All months (aggregated)"}
+            {startMonth && endMonth
+              ? `Viewing: ${startMonth} → ${endMonth}`
+              : "Viewing: monthly range"}
           </div>
         </div>
 
-        <div className="rightPills" style={{ gap: 8 }}>
+        <div className="rightPills" style={{ gap: 8, flexWrap: "wrap" }}>
           <select
             className="control control--compact"
-            value={selectedMonth || ""}
-            onChange={(e) => onMonthChange(e.target.value || null)}
-            style={{ fontSize: 11 }}
+            value={startMonth || ""}
+            onChange={(e) => onStartMonthChange(e.target.value)}
+            style={{ fontSize: 11, minWidth: 120 }}
           >
-            <option value="">All Months</option>
+            <option value="">Start month</option>
             {availableMonths.map((month) => (
-              <option key={month} value={month}>
+              <option key={`start-${month}`} value={month}>
                 {month}
               </option>
             ))}
           </select>
-          
+
+          <select
+            className="control control--compact"
+            value={endMonth || ""}
+            onChange={(e) => onEndMonthChange(e.target.value)}
+            style={{ fontSize: 11, minWidth: 120 }}
+          >
+            <option value="">End month</option>
+            {availableMonths.map((month) => (
+              <option key={`end-${month}`} value={month}>
+                {month}
+              </option>
+            ))}
+          </select>
+
           <div className="miniPill">
             Selected: <span className="mono">{selectedIso3 ?? "none"}</span>
           </div>

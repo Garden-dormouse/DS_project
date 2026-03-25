@@ -1,10 +1,9 @@
-from urllib.request import urlretrieve
-from collections import defaultdict
-
+import csv
 import pickle
+from collections import defaultdict
+from urllib.request import urlretrieve
 
 import langcodes  # for two-letter ISO 639 language codes
-import csv
 import pandas as pd
 
 print("Downloading raw data")
@@ -18,11 +17,6 @@ downloads = [
 for download in downloads:
     urlretrieve(download["url"], download["filename"])
 
-print("Opening raw data")
-with open(
-    "./pageview_mammal_monthly.pkl", "rb"
-) as fileobject:  # path for your data location
-    dct = pickle.load(fileobject)
 
 # Initialize ISO639P3 to Glottocode dict
 print("Mapping ISO 639-3 to Glottocode")
@@ -44,6 +38,20 @@ with open("./iso-639-3-macrolanguages.tab", encoding="utf8") as f:
     for line in f:
         macro, individual, status = line.strip().split("\t")
         macro_to_individuals[macro].add(individual)
+
+
+### NEW DATA IN
+print("Opening new data")
+raw_data = "pageview_reptile_monthly"
+typename = raw_data.split("_")[1]  # necessary when other types of animal are added
+# frequency = raw_data.split("_")[2]  # might be necessary to specify time granularity later, but only monthly data for now
+
+with open(
+    "./" + raw_data + ".pkl",
+    "rb",  # path for your data location
+) as fileobject:
+    dct = pickle.load(fileobject)
+
 
 ### SPECIES - creating table
 print("Creating table 'species'")
@@ -117,6 +125,7 @@ def get_glottocodes(iso):
 
     return set()
 
+
 # Glottocodes as a semicolon-separated list
 df_languages["glottocode"] = df_languages["iso639_3"].apply(
     lambda iso: ";".join(sorted(get_glottocodes(iso))) or None
@@ -161,7 +170,6 @@ print("Saving tables to pickle files")
 print(df_species.dtypes)
 df_species.to_pickle("./df_species.pkl")
 
-df_languages = df_languages.drop("code", axis=1)  # 'Code' not in the database setup
 print(df_languages.dtypes)
 df_languages.to_pickle("./df_languages.pkl")
 
