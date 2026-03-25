@@ -49,7 +49,8 @@ function formatRangeLabel(monthsInRange, availableMonths) {
 export default function App() {
   const [selectedIso3, setSelectedIso3] = useState(null);
   const [selectedLanguage, setSelectedLanguage] = useState(null); // ISO 639-3
-  const [highlightedCountries, setHighlightedCountries] = useState([]);
+  const [languageRange, setLanguageRange] = useState(null); // GeoJSON polygon
+  const [languageRangeCache, setLanguageRangeCache] = useState({});
 
   const [startMonth, setStartMonth] = useState(null);
   const [endMonth, setEndMonth] = useState(null);
@@ -128,83 +129,41 @@ export default function App() {
   useEffect(() => {
     if (!selectedLanguage || !startMonth || !endMonth) {
       setTopSpecies([]);
-      setHighlightedCountries([]);
+      setLanguageRange(null);
       setSelectedIso3(null);
       return;
     }
 
     async function fetchLanguageData() {
       try {
-        const [topSpeciesData, countries] = await Promise.all([
-          api.getTopSpeciesByLanguage(selectedLanguage, {
-            limit: 20,
-            startMonth,
-            endMonth,
-          }),
-          api.getLanguageCountries(selectedLanguage),
-        ]);
+        const topSpeciesData = await api.getTopSpeciesByLanguage(selectedLanguage, {
+          limit: 20,
+          startMonth,
+          endMonth,
+        });
 
-        const safeCountries = Array.isArray(countries) ? countries : [];
+        // Check cache for language range
+        let range = languageRangeCache[selectedLanguage];
+        if (!range) {
+          range = await api.getLanguageRange(selectedLanguage);
+          setLanguageRangeCache((prev) => ({
+            ...prev,
+            [selectedLanguage]: range,
+          }));
+        }
 
         setTopSpecies(Array.isArray(topSpeciesData) ? topSpeciesData : []);
-        setHighlightedCountries(safeCountries);
-        setSelectedIso3(safeCountries.length > 0 ? safeCountries[0] : null);
+        setLanguageRange(range || null);
+        setSelectedIso3(null);
       } catch (err) {
         console.error("Error fetching language data:", err);
         setTopSpecies([]);
-        setHighlightedCountries([]);
+        setLanguageRange(null);
       }
     }
 
     fetchLanguageData();
-  }, [selectedLanguage, startMonth, endMonth]);
-
-  const iso3ToLanguageName = useMemo(() => {
-    return {
-      USA: "English",
-      GBR: "English",
-      CAN: "English",
-      AUS: "English",
-      NZL: "English",
-      IRL: "English",
-      FIN: "Finnish",
-      SWE: "Swedish",
-      NOR: "Swedish",
-      FRA: "French",
-      BEL: "French",
-      CHE: "French",
-      LUX: "French",
-      DEU: "German",
-      AUT: "German",
-      LIE: "German",
-      ESP: "Spanish",
-      MEX: "Spanish",
-      ARG: "Spanish",
-      COL: "Spanish",
-      PER: "Spanish",
-      VEN: "Spanish",
-      CHL: "Spanish",
-      CHN: "Chinese",
-      TWN: "Chinese",
-      SGP: "Chinese",
-      JPN: "Japanese",
-      PRT: "Portuguese",
-      BRA: "Portuguese",
-      ITA: "Italian",
-      RUS: "Russian",
-      BLR: "Russian",
-      KAZ: "Russian",
-      SAU: "Arabic",
-      EGY: "Arabic",
-      ARE: "Arabic",
-      JOR: "Arabic",
-      LBN: "Arabic",
-      NLD: "Dutch",
-      POL: "Polish",
-      TUR: "Turkish",
-      KOR: "Korean",
-    };
-  }, []);
+  }, [selectedLanguage, startMonth, endMonth, languageRangeCache]);
 
   const selectedLanguageObj = useMemo(() => {
     return languages.find((l) => l.code === selectedLanguage) || null;
@@ -214,14 +173,6 @@ export default function App() {
 
   const handleCountryClick = (iso3) => {
     setSelectedIso3(iso3);
-
-    const languageName = iso3ToLanguageName[iso3];
-    if (!languageName) return;
-
-    const matchedLanguage = languages.find((l) => l.name === languageName);
-    if (matchedLanguage) {
-      setSelectedLanguage(matchedLanguage.code); // ISO 639-3
-    }
   };
 
   const handleSelectRangeMonth = (month) => {
@@ -297,7 +248,7 @@ export default function App() {
         <section className="panel panel--center">
           <MapPanel
             selectedIso3={selectedIso3}
-            highlightedCountries={highlightedCountries}
+            languageRange={languageRange}
             onCountryClick={handleCountryClick}
             mapIntensityByIso3={mapIntensityByIso3}
             geojsonUrl="/data/world.geojson"

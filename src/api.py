@@ -14,6 +14,7 @@ from db_module.dao.pageview_dao import SQLAlchemyPageviewDAO
 from db_module.dao.timestamp_dao import SQLAlchemyTimestampDAO
 from services.pageview_service import PageviewService
 from services.timestamp_service import TimestampService
+from services.language_service import LanguageService
 
 load_dotenv()
 
@@ -57,7 +58,7 @@ def get_languages():
             if lang.iso_639_3 and lang.iso_639_3 not in seen:
                 seen[lang.iso_639_3] = {
                     "code": lang.iso_639_3,  # used by frontend for API calls
-                    "name": lang.name,        # shown in dropdown/UI
+                    "name": lang.name,  # shown in dropdown/UI
                 }
 
         return jsonify(list(seen.values()))
@@ -127,108 +128,21 @@ def get_available_months():
         return jsonify(months)
 
 
-@app.route("/api/languages/<language_code>/countries", methods=["GET"])
-def get_language_countries(language_code):
+@app.route("/api/languages/<iso_code>/range", methods=["GET"])
+def get_language_range(iso_code):
     """
-    Get all countries where a specific language is spoken.
+    Get the geographic range of a language in GeoJSON format.
     Input:
-      language_code = ISO 639-3
+      iso_code = ISO 639-3 code
     Output:
-      List of ISO3 country codes
+      GeoJSON FeatureCollection with polygon data, or empty FeatureCollection if not found
     """
+    with SessionFactory() as session:
+        language_dao = SQLAlchemyLanguageDAO(session)
+        service = LanguageService(language_dao)
+        result = service.get_range_by_iso(iso_code)
 
-    # ISO 639-3 -> ISO3 country list
-    # Adjust/add entries based on the languages you want to support in the UI.
-    iso_639_3_to_countries = {
-        # English
-        "eng": ["USA", "GBR", "CAN", "AUS", "NZL", "IRL"],
-
-        # Finnish
-        "fin": ["FIN"],
-
-        # Swedish
-        "swe": ["SWE", "FIN"],
-
-        # French
-        "fra": ["FRA", "BEL", "CHE", "CAN", "LUX"],
-
-        # German
-        "deu": ["DEU", "AUT", "CHE", "LIE"],
-
-        # Spanish
-        "spa": ["ESP", "MEX", "ARG", "COL", "PER", "VEN", "CHL"],
-
-        # Mandarin / Chinese
-        "zho": ["CHN", "TWN", "SGP"],
-
-        # Japanese
-        "jpn": ["JPN"],
-
-        # Portuguese
-        "por": ["PRT", "BRA"],
-
-        # Italian
-        "ita": ["ITA", "CHE"],
-
-        # Russian
-        "rus": ["RUS", "BLR", "KAZ"],
-
-        # Arabic
-        "ara": ["SAU", "EGY", "ARE", "JOR", "LBN"],
-
-        # Dutch
-        "nld": ["NLD", "BEL"],
-
-        # Polish
-        "pol": ["POL"],
-
-        # Turkish
-        "tur": ["TUR"],
-
-        # Korean
-        "kor": ["KOR"],
-
-        # Vietnamese
-        "vie": ["VNM"],
-
-        # Hindi
-        "hin": ["IND"],
-
-        # Norwegian
-        "nor": ["NOR"],
-
-        # Danish
-        "dan": ["DNK"],
-
-        # Czech
-        "ces": ["CZE"],
-
-        # Greek
-        "ell": ["GRC"],
-
-        # Thai
-        "tha": ["THA"],
-
-        # Indonesian
-        "ind": ["IDN"],
-
-        # Ukrainian
-        "ukr": ["UKR"],
-
-        # Romanian
-        "ron": ["ROU"],
-
-        # Hungarian
-        "hun": ["HUN"],
-
-        # Hebrew
-        "heb": ["ISR"],
-
-        # Persian
-        "fas": ["IRN"],
-    }
-
-    return jsonify(iso_639_3_to_countries.get(language_code, []))
+    return jsonify(result or {"type": "FeatureCollection", "features": []})
 
 
 if __name__ == "__main__":

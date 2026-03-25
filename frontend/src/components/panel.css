@@ -28,8 +28,8 @@
 
 .panelBody {
   padding: 14px;
-  overflow-y: auto;   /* 只允许纵向滚动 */
-  overflow-x: hidden; /* 禁止横向滚动 */
+  overflow-y: auto;   
+  overflow-x: hidden; 
   min-height: 0;
 }
 
@@ -58,12 +58,12 @@
 
 /* Make native selects readable in dark UI */
 .control {
-  color-scheme: dark; /* 提示浏览器用暗色表单控件 */
+  color-scheme: dark; 
 }
 
 .control option {
-  background-color: #0f172a; /* 深色底 */
-  color: rgba(255, 255, 255, 0.92); /* 白字 */
+  background-color: #0f172a; 
+  color: rgba(255, 255, 255, 0.92); 
 }
 
 

@@ -32,11 +32,11 @@ export const api = {
     return response.json();
   },
 
-  async getLanguageCountries(languageCode) {
+  async getLanguageRange(languageCode) {
     const response = await fetch(
-      `${API_BASE_URL}/languages/${encodeURIComponent(languageCode)}/countries`
+      `${API_BASE_URL}/languages/${encodeURIComponent(languageCode)}/range`
     );
-    if (!response.ok) throw new Error("Failed to fetch language countries");
+    if (!response.ok) return { type: "FeatureCollection", features: [] };
     return response.json();
   },
 

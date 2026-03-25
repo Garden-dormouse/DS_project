@@ -5,7 +5,7 @@ export default function WorldMap({
   geojsonUrl = "/data/world.geojson",
   onCountryClick,
   selectedIso3,
-  highlightedCountries = [],
+  languageRange = null,
   valueByIso3 = {},
 }) {
   const width = 1200;
@@ -69,12 +69,8 @@ export default function WorldMap({
     return p.name || p.NAME || p.ADMIN || "Unknown";
   }
 
-  function fillForIso3(iso3, isHighlighted) {
+  function fillForIso3(iso3) {
     if (!iso3) return "rgba(255,255,255,0.03)";
-    
-    if (isHighlighted) {
-      return "rgba(251, 191, 36, 0.6)"; // Increased from 0.25 to 0.6 for visibility
-    }
     
     const v = valueByIso3[iso3] ?? 0;
     const t = Math.min(1, v / maxValue);
@@ -113,27 +109,15 @@ export default function WorldMap({
             const iso3 = getIso3(feature);
             const name = getName(feature);
             const isSelected = iso3 && selectedIso3 === iso3;
-            const isHighlighted = iso3 && highlightedCountries.includes(iso3);
             
-            let strokeColor;
-            let strokeWidth;
-            
-            if (isSelected) {
-              strokeColor = "rgba(52,211,153,0.9)";
-              strokeWidth = 1.6;
-            } else if (isHighlighted) {
-              strokeColor = "rgba(251, 191, 36, 1)"; // Increased to full opacity
-              strokeWidth = 2; // Increased from 1.3 to 2 for better visibility
-            } else {
-              strokeColor = "rgba(255,255,255,0.10)";
-              strokeWidth = 0.8;
-            }
+            const strokeColor = isSelected ? "rgba(52,211,153,0.9)" : "rgba(255,255,255,0.10)";
+            const strokeWidth = isSelected ? 1.6 : 0.8;
 
             return (
               <path
                 key={idx}
                 d={d}
-                fill={fillForIso3(iso3, isHighlighted)}
+                fill={fillForIso3(iso3)}
                 stroke={strokeColor}
                 strokeWidth={strokeWidth}
                 onMouseMove={(e) => {
@@ -152,6 +136,23 @@ export default function WorldMap({
               />
             );
           })}
+          
+          {/* Language range polygon overlay */}
+          {languageRange && languageRange.features && path && projection && (
+            languageRange.features.map((feature, idx) => {
+              const d = path(feature);
+              return (
+                <path
+                  key={`lang-range-${idx}`}
+                  d={d}
+                  fill="rgba(139, 92, 246, 0.15)"
+                  stroke="rgba(139, 92, 246, 0.6)"
+                  strokeWidth={1.5}
+                  pointerEvents="none"
+                />
+              );
+            })
+          )}
         </svg>
       )}
 

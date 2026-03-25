@@ -4,7 +4,7 @@ import WorldMap from "../WorldMap.jsx";
 
 export default function MapPanel({
   selectedIso3,
-  highlightedCountries,
+  languageRange,
   onCountryClick,
   mapIntensityByIso3,
   geojsonUrl,
@@ -66,7 +66,7 @@ export default function MapPanel({
           geojsonUrl={geojsonUrl}
           onCountryClick={onCountryClick}
           selectedIso3={selectedIso3}
-          highlightedCountries={highlightedCountries}
+          languageRange={languageRange}
           valueByIso3={mapIntensityByIso3}
         />
       </div>
