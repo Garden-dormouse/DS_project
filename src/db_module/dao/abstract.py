@@ -89,6 +89,32 @@ class LanguageDAO(ABC):
         pass
 
     @abstractmethod
+    def get_by_name(self, name: str) -> Language | None:
+        """
+        Retrieve a language by its name.
+
+        Args:
+            name (str): The name of the language.
+
+        Returns:
+            language (Language | None): The requested Language if found, otherwise None.
+        """
+        pass
+
+    @abstractmethod
+    def get_by_iso(self, iso_639_3: str) -> Language | None:
+        """
+        Retrieve a language by its ISO 639-3 code.
+
+        Args:
+            iso_639_3 (str): The three-letter ISO 639-3 code of the language.
+
+        Returns:
+            language (Language | None): The requested Language if found, otherwise None.
+        """
+        pass
+
+    @abstractmethod
     def create(self, name: str, iso_639_3: str, language_range: str) -> Language:
         """
         Create and persist a new Language.

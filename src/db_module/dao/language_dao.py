@@ -13,6 +13,18 @@ class SQLAlchemyLanguageDAO(LanguageDAO):
 
     def get_all(self):
         return self.session.query(Language).all()
+    
+    def get_by_name(self, name: str) -> Language | None:
+        query = (self.session.query(Language)
+        .filter(Language.name == name)
+        )
+        return query.first()
+
+    def get_by_iso(self, iso_639_3: str) -> Language | None:
+        query = (self.session.query(Language)
+        .filter(Language.iso_639_3 == iso_639_3)         
+        )
+        return query.first()
 
     def create(self, name: str, iso_639_3: str, language_range: str) -> Language:
         language = Language(name=name, iso_639_3=iso_639_3, language_range=language_range)
