@@ -44,12 +44,13 @@ class SpeciesDAO(ABC):
         pass
 
     @abstractmethod
-    def create(self, latin_name: str) -> Species:
+    def create(self, latin_name: str, species_type: str) -> Species:
         """
         Create and persist a new Species.
 
         Args:
             latin_name (str): The Latin name of the species.
+            species_type (str): The type of the species (e.g., 'reptile', 'bird', 'mammals').
 
         Returns:
             Species: The newly created Species.
@@ -88,7 +89,6 @@ class LanguageDAO(ABC):
         """
         pass
 
-    
     @abstractmethod
     def get_by_name(self, name: str) -> Language | None:
         """

@@ -104,6 +104,6 @@ class TestSpeciesService(unittest.TestCase):
         mock_dao = Mock()
         service = SpeciesService(mock_dao)
 
-        service.add_species(latin_name="Panthera leo")
+        service.add_species(latin_name="Panthera leo", species_type="mammal")
 
-        mock_dao.create.assert_called_once_with("Panthera leo")
+        mock_dao.create.assert_called_once_with("Panthera leo", "mammal")

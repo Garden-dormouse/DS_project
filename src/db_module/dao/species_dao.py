@@ -14,8 +14,8 @@ class SQLAlchemySpeciesDAO(SpeciesDAO):
     def get_all(self):
         return self.session.query(Species).all()
 
-    def create(self, latin_name: str) -> Species:
-        species = Species(latin_name=latin_name)
+    def create(self, latin_name: str, species_type: str) -> Species:
+        species = Species(latin_name=latin_name, type=species_type)
         self.session.add(species)
         self.session.commit()
         return species

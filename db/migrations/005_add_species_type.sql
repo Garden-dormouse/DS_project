@@ -1,0 +1,7 @@
+BEGIN TRANSACTION;
+
+ALTER TABLE Species ADD COLUMN Type TEXT;
+
+PRAGMA user_version = 5;
+
+COMMIT;

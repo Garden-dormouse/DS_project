@@ -1,6 +1,8 @@
 import os
 import pickle
 import json
+import glob
+import pandas as pd
 
 from dotenv import load_dotenv
 
@@ -24,9 +26,7 @@ engine = get_engine(DB_URL)
 SessionFactory = get_session_factory(engine)
 
 # Download and index GeoJSON
-GEOJSON_URL = (
-    "https://raw.githubusercontent.com/Glottography/asher2007world/refs/heads/main/cldf/contemporary/languages.geojson"
-)
+GEOJSON_URL = "https://raw.githubusercontent.com/Glottography/asher2007world/refs/heads/main/cldf/contemporary/languages.geojson"
 GEOJSON_PATH = "./data_wrangling/languages.geojson"
 
 urlretrieve(GEOJSON_URL, GEOJSON_PATH)
@@ -63,10 +63,23 @@ with SessionFactory() as session:
     # )
 
     # Populating the database with data
-    with open(
-        os.path.join(os.getcwd(), "data_wrangling", "df_languages.pkl"), "rb"
-    ) as fileobject:
-        df_languages = pickle.load(fileobject)
+
+    # Load all type-specific language files and concatenate
+    print("Loading language data...")
+    language_files = glob.glob("data_wrangling/df_languages_*.pkl")
+    if language_files:
+        df_languages_list = [pickle.load(open(f, "rb")) for f in language_files]
+        df_languages = pd.concat(df_languages_list, ignore_index=True)
+        # Remove duplicates based on language name
+        df_languages = df_languages.drop_duplicates(subset=["language"], keep="first")
+    else:
+        print(
+            "WARNING: No type-specific language files found. Looking for df_languages.pkl..."
+        )
+        with open(
+            os.path.join(os.getcwd(), "data_wrangling", "df_languages.pkl"), "rb"
+        ) as fileobject:
+            df_languages = pickle.load(fileobject)
 
     def get_language_range(glottocode_string):
         """Combine polygons for all Glottocodes in semicolon-separated string"""
@@ -79,19 +92,34 @@ with SessionFactory() as session:
             return None
         return json.dumps({"type": "FeatureCollection", "features": polygons})
 
-    df_languages["language_range"] = df_languages["glottocode"].apply(get_language_range)
+    df_languages["language_range"] = df_languages["glottocode"].apply(
+        get_language_range
+    )
 
     for index, row in df_languages.iterrows():
         language_service.add_language(
             row["language"], row["iso639_3"], row["language_range"]
         )
 
-    with open(
-        os.path.join(os.getcwd(), "data_wrangling", "df_species.pkl"), "rb"
-    ) as fileobject:
-        df_species = pickle.load(fileobject)
+    # Load all type-specific species files and concatenate
+    print("Loading species data...")
+    species_files = glob.glob("data_wrangling/df_species_*.pkl")
+    if species_files:
+        df_species_list = [pickle.load(open(f, "rb")) for f in species_files]
+        df_species = pd.concat(df_species_list, ignore_index=True)
+    else:
+        print(
+            "WARNING: No type-specific species files found. Looking for df_species.pkl..."
+        )
+        with open(
+            os.path.join(os.getcwd(), "data_wrangling", "df_species.pkl"), "rb"
+        ) as fileobject:
+            df_species = pickle.load(fileobject)
+
     for index, row in df_species.iterrows():
-        species_service.add_species(row["latin_name"])
+        # Pass species type - should exist in type-specific files, fallback to 'unknown'
+        species_type = row["type"] if "type" in row.index else "unknown"
+        species_service.add_species(row["latin_name"], species_type)
 
     with open(
         os.path.join(os.getcwd(), "data_wrangling", "df_time.pkl"), "rb"
@@ -109,10 +137,20 @@ with SessionFactory() as session:
     all_timestamps = timestamp_dao.get_all()
     timestamp_lookup = {t.time: t.ID for t in all_timestamps}
 
-    with open(
-        os.path.join(os.getcwd(), "data_wrangling", "df_pageviews.pkl"), "rb"
-    ) as fileobject:
-        df_pageviews = pickle.load(fileobject)
+    # Load all type-specific pageview files and concatenate
+    print("Loading pageview data...")
+    pageview_files = glob.glob("data_wrangling/df_pageviews_*.pkl")
+    if pageview_files:
+        df_pageviews_list = [pickle.load(open(f, "rb")) for f in pageview_files]
+        df_pageviews = pd.concat(df_pageviews_list, ignore_index=True)
+    else:
+        print(
+            "WARNING: No type-specific pageview files found. Looking for df_pageviews.pkl..."
+        )
+        with open(
+            os.path.join(os.getcwd(), "data_wrangling", "df_pageviews.pkl"), "rb"
+        ) as fileobject:
+            df_pageviews = pickle.load(fileobject)
 
     for index, row in df_pageviews.iterrows():
         language_ID = language_lookup.get(row["language"])  # Use lookup

@@ -56,8 +56,14 @@ with open(
 
 ### SPECIES
 try:
-    print("Opening existing table 'species'")
-    old_species = pickle.load(open("df_species.pkl", "rb"))
+    print(f"Opening existing table 'species' for {typename}")
+    # Try to load type-specific species file first
+    try:
+        old_species = pickle.load(open(f"df_species_{typename}.pkl", "rb"))
+    except FileNotFoundError:
+        print(f"Type-specific file not found. Trying unified df_species.pkl...")
+        old_species = pickle.load(open("df_species.pkl", "rb"))
+
     old_species_set = set(old_species["latin_name"])
 
     print("Checking new data for new species")
@@ -86,8 +92,13 @@ except FileNotFoundError:
 
 ### LANGUAGE - creating table
 try:
-    print("Opening existing table 'language'")
-    old_languages = pickle.load(open("df_languages.pkl", "rb"))
+    print(f"Opening existing table 'language' for {typename}")
+    # Try to load type-specific languages file first
+    try:
+        old_languages = pickle.load(open(f"df_languages_{typename}.pkl", "rb"))
+    except FileNotFoundError:
+        print(f"Type-specific file not found. Trying unified df_languages.pkl...")
+        old_languages = pickle.load(open("df_languages.pkl", "rb"))
 
     print("Checking new data for new languages")
     list_language_codes = list()
@@ -149,8 +160,13 @@ except FileNotFoundError:
 # This assumption does not hold true for any data on old species with old languages that had some time range data missing at time of wrangling
 # That pageview data from that missing time range will not be able to be added here
 try:
-    print("Opening existing table 'pageviews'")
-    old_pageviews = pickle.load(open("df_pageviews.pkl", "rb"))
+    print(f"Opening existing table 'pageviews' for {typename}")
+    # Try to load type-specific pageviews file first
+    try:
+        old_pageviews = pickle.load(open(f"df_pageviews_{typename}.pkl", "rb"))
+    except FileNotFoundError:
+        print(f"Type-specific file not found. Trying unified df_pageviews.pkl...")
+        old_pageviews = pickle.load(open("df_pageviews.pkl", "rb"))
 
     species = list()
     timestamps = list()

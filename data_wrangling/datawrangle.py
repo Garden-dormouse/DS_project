@@ -1,4 +1,5 @@
 import csv
+import os
 import pickle
 from collections import defaultdict
 from urllib.request import urlretrieve
@@ -40,25 +41,10 @@ with open("./iso-639-3-macrolanguages.tab", encoding="utf8") as f:
         macro_to_individuals[macro].add(individual)
 
 
-### NEW DATA IN
-print("Opening new data")
-raw_data = "pageview_reptile_monthly"
-typename = raw_data.split("_")[1]  # necessary when other types of animal are added
-# frequency = raw_data.split("_")[2]  # might be necessary to specify time granularity later, but only monthly data for now
+### ANIMAL TYPES TO PROCESS
+animal_types = ["reptile", "bird", "mammal"]
 
-with open(
-    "./" + raw_data + ".pkl",
-    "rb",  # path for your data location
-) as fileobject:
-    dct = pickle.load(fileobject)
-
-
-### SPECIES - creating table
-print("Creating table 'species'")
-df_species = pd.DataFrame(list(dct.keys()))
-df_species.columns = ["latin_name"]
-
-### TIME - creating table
+# Create time table once (same for all animal types)
 print("Creating table 'time'")
 list_time = list()
 
@@ -79,102 +65,135 @@ for year_id in range(0, 12):  # hardcoded to be 2015-2026 right now, can be alte
 df_time = pd.DataFrame(list_time)
 df_time.columns = ["timestamp"]
 
-
-### LANGUAGE - creating table
-print("Creating table 'language'")
-list_language_codes = list()
-# finding all the languages from the pageview data:
-for spec in df_species["latin_name"]:
-    languages = list(dct[spec].keys())
-    list_language_codes.extend(languages)
-
-set_language_codes = set(list_language_codes)
-df_languages = pd.DataFrame(set_language_codes)
-df_languages.columns = ["code"]
-df_languages["language"] = [
-    langcodes.Language.make(language=lang).display_name()
-    for lang in df_languages["code"]
-]
-
-
-def get_iso3(code):
-    try:
-        return langcodes.Language.get(code).to_alpha3()
-    except Exception:
-        return None
-
-
-df_languages["iso639_3"] = df_languages["code"].apply(get_iso3)
-
-
-def get_glottocodes(iso):
-    if iso is None:
-        return set()
-
-    # Collect all individual languages linked to a macrolanguage
-    if iso in macro_to_individuals:
-        return {
-            iso_to_glotto[ind]
-            for ind in macro_to_individuals[iso]
-            if ind in iso_to_glotto
-        }
-
-    # Direct match
-    if iso in iso_to_glotto:
-        return {iso_to_glotto[iso]}
-
-    return set()
-
-
-# Glottocodes as a semicolon-separated list
-df_languages["glottocode"] = df_languages["iso639_3"].apply(
-    lambda iso: ";".join(sorted(get_glottocodes(iso))) or None
-)
-
-
-### PAGEVIEWS - creating table
-print("Creating table 'pageviews'")
-species = list()
-timestamps = list()
-pageviews = list()
-languages = list()
-
-for spec in df_species["latin_name"]:
-    languages_spec = list(dct[spec].keys())
-
-    for lang in languages_spec:
-        timestamps_lang = dct[spec][lang]["timestamp"]
-        timestamps_lang_datetime = pd.to_datetime(timestamps_lang, format="%Y%m%d%H")
-        timestamps.extend(timestamps_lang_datetime)
-
-        species.extend([spec] * len(timestamps_lang))
-
-        lang_name = df_languages.loc[df_languages["code"] == lang]["language"].item()
-        languages.extend([lang_name] * len(timestamps_lang))
-
-        pageviews_lang = dct[spec][lang]["views"]
-        pageviews.extend(pageviews_lang)
-
-df_pageviews = pd.DataFrame(
-    {
-        "timestamp": timestamps,
-        "language": languages,
-        "species": species,
-        "number_of_pageviews": pageviews,
-    }
-)
-
-
-### Saving tables as pickle files
-print("Saving tables to pickle files")
-print(df_species.dtypes)
-df_species.to_pickle("./df_species.pkl")
-
-print(df_languages.dtypes)
-df_languages.to_pickle("./df_languages.pkl")
-
-print(df_time.dtypes)
+print("Saving time table to pickle file")
 df_time.to_pickle("./df_time.pkl")
 
-print(df_pageviews.dtypes)
-df_pageviews.to_pickle("./df_pageviews.pkl")
+# Process each animal type
+for animal_type in animal_types:
+    print(f"\n{'='*50}")
+    print(f"Processing {animal_type}")
+    print(f"{'='*50}")
+
+    raw_data = f"pageview_{animal_type}_monthly"
+
+    try:
+        with open(f"./{raw_data}.pkl", "rb") as fileobject:
+            dct = pickle.load(fileobject)
+    except FileNotFoundError:
+        print(f"WARNING: {raw_data}.pkl not found. Skipping {animal_type}.")
+        continue
+
+    # Check if all output files already exist
+    output_files = [
+        f"./df_species_{animal_type}.pkl",
+        f"./df_languages_{animal_type}.pkl",
+        f"./df_pageviews_{animal_type}.pkl",
+    ]
+
+    if all(os.path.exists(f) for f in output_files):
+        print(f"Output files for {animal_type} already exist. Skipping...")
+        continue
+
+    ### SPECIES - creating table
+    print(f"Creating table 'species' for {animal_type}")
+    df_species = pd.DataFrame(list(dct.keys()))
+    df_species.columns = ["latin_name"]
+    df_species["type"] = animal_type
+
+    ### LANGUAGE - creating table
+    print(f"Creating table 'language' for {animal_type}")
+    list_language_codes = list()
+    # finding all the languages from the pageview data:
+    for spec in df_species["latin_name"]:
+        languages = list(dct[spec].keys())
+        list_language_codes.extend(languages)
+
+    set_language_codes = set(list_language_codes)
+    df_languages = pd.DataFrame(set_language_codes)
+    df_languages.columns = ["code"]
+    df_languages["language"] = [
+        langcodes.Language.make(language=lang).display_name()
+        for lang in df_languages["code"]
+    ]
+
+    def get_iso3(code):
+        try:
+            return langcodes.Language.get(code).to_alpha3()
+        except Exception:
+            return None
+
+    df_languages["iso639_3"] = df_languages["code"].apply(get_iso3)
+
+    def get_glottocodes(iso):
+        if iso is None:
+            return set()
+
+        # Collect all individual languages linked to a macrolanguage
+        if iso in macro_to_individuals:
+            return {
+                iso_to_glotto[ind]
+                for ind in macro_to_individuals[iso]
+                if ind in iso_to_glotto
+            }
+
+        # Direct match
+        if iso in iso_to_glotto:
+            return {iso_to_glotto[iso]}
+
+        return set()
+
+    # Glottocodes as a semicolon-separated list
+    df_languages["glottocode"] = df_languages["iso639_3"].apply(
+        lambda iso: ";".join(sorted(get_glottocodes(iso))) or None
+    )
+
+    ### PAGEVIEWS - creating table
+    print(f"Creating table 'pageviews' for {animal_type}")
+    species = list()
+    timestamps = list()
+    pageviews = list()
+    languages = list()
+
+    for spec in df_species["latin_name"]:
+        languages_spec = list(dct[spec].keys())
+
+        for lang in languages_spec:
+            timestamps_lang = dct[spec][lang]["timestamp"]
+            timestamps_lang_datetime = pd.to_datetime(
+                timestamps_lang, format="%Y%m%d%H"
+            )
+            timestamps.extend(timestamps_lang_datetime)
+
+            species.extend([spec] * len(timestamps_lang))
+
+            lang_name = df_languages.loc[df_languages["code"] == lang][
+                "language"
+            ].item()
+            languages.extend([lang_name] * len(timestamps_lang))
+
+            pageviews_lang = dct[spec][lang]["views"]
+            pageviews.extend(pageviews_lang)
+
+    df_pageviews = pd.DataFrame(
+        {
+            "timestamp": timestamps,
+            "language": languages,
+            "species": species,
+            "number_of_pageviews": pageviews,
+        }
+    )
+
+    ### Saving tables as pickle files
+    print(f"Saving {animal_type} tables to pickle files")
+    print(df_species.dtypes)
+    df_species.to_pickle(f"./df_species_{animal_type}.pkl")
+
+    print(df_languages.dtypes)
+    df_languages.to_pickle(f"./df_languages_{animal_type}.pkl")
+
+    print(df_pageviews.dtypes)
+    df_pageviews.to_pickle(f"./df_pageviews_{animal_type}.pkl")
+
+print(f"\n{'='*50}")
+print("All animal types processed successfully!")
+print(f"{'='*50}")
