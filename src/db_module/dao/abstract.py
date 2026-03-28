@@ -21,12 +21,12 @@ class SpeciesDAO(ABC):
     """
 
     @abstractmethod
-    def get_by_id(self, species_ID: int) -> Species | None:
+    def get_by_id(self, species_id: int) -> Species | None:
         """
         Retrieve a Species by its primary key.
 
         Args:
-            species_ID (int): Primary key of the Species.
+            species_id (int): Primary key of the Species.
 
         Returns:
             Species | None: The requested Species if found, otherwise None.
@@ -67,12 +67,12 @@ class LanguageDAO(ABC):
     """
 
     @abstractmethod
-    def get_by_id(self, language_ID: int) -> Language | None:
+    def get_by_id(self, language_id: int) -> Language | None:
         """
         Retrieve a Language by its primary key.
 
         Args:
-            language_ID (int): Primary key of the Language.
+            language_id (int): Primary key of the Language.
 
         Returns:
             Language | None: The requested Language if found, otherwise None.
@@ -140,12 +140,12 @@ class TimestampDAO(ABC):
     """
 
     @abstractmethod
-    def get_by_id(self, timestamp_ID: int) -> Timestamp | None:
+    def get_by_id(self, timestamp_id: int) -> Timestamp | None:
         """
         Retrieve a Timestamp by its primary key.
 
         Args:
-            timestamp_ID (int): Primary key of the Timestamp.
+            timestamp_id (int): Primary key of the Timestamp.
 
         Returns:
             Timestamp | None: The requested Timestamp if found, otherwise None.
@@ -195,12 +195,12 @@ class PageviewDAO(ABC):
     """
 
     @abstractmethod
-    def get_by_id(self, pageview_ID: int) -> Pageview | None:
+    def get_by_id(self, pageview_id: int) -> Pageview | None:
         """
         Retrieve a Pageview by its primary key.
 
         Args:
-            pageview_ID (int): Primary key of the Pageview.
+            pageview_id (int): Primary key of the Pageview.
 
         Returns:
             Pageview | None: The requested Pageview if found, otherwise None.
@@ -253,18 +253,18 @@ class PageviewDAO(ABC):
     @abstractmethod
     def create(
         self,
-        timestamp_ID: int,
-        language_ID: int,
-        species_ID: int,
+        timestamp_id: int,
+        language_id: int,
+        species_id: int,
         number_of_pageviews: int,
     ) -> Pageview:
         """
         Create and persist a new Pageview.
 
         Args:
-            timestamp_ID (int): ID of the associated Timestamp.
-            language_ID (int): ID of the associated Language.
-            species_ID (int): ID of the associated Species.
+            timestamp_id (int): ID of the associated Timestamp.
+            language_id (int): ID of the associated Language.
+            species_id (int): ID of the associated Species.
             number_of_pageviews (int): Recorded number of pageviews.
 
         Returns:

@@ -19,9 +19,7 @@ from services.timestamp_service import TimestampService
 
 load_dotenv()
 
-DB_PATH = os.getenv("DB_PATH")
-
-DB_URL = f"sqlite:///{DB_PATH}"
+DB_URL = os.getenv("DB_URL")
 engine = get_engine(DB_URL)
 SessionFactory = get_session_factory(engine)
 
@@ -92,6 +90,11 @@ with SessionFactory() as session:
             return None
         return json.dumps({"type": "FeatureCollection", "features": polygons})
 
+    # Remove duplicates based on language name
+    df_languages = df_languages.drop_duplicates(subset=["language"], keep="first")
+    # Also remove duplicates based on ISO code
+    df_languages = df_languages.drop_duplicates(subset=["iso639_3"], keep="first")
+
     df_languages["language_range"] = df_languages["glottocode"].apply(
         get_language_range
     )
@@ -129,13 +132,13 @@ with SessionFactory() as session:
         timestamp_service.add_timestamp(row["timestamp"])
 
     all_languages = language_dao.get_all()
-    language_lookup = {lang.name: lang.ID for lang in all_languages}
+    language_lookup = {lang.name: lang.id for lang in all_languages}
 
     all_species = species_dao.get_all()
-    species_lookup = {s.latin_name: s.ID for s in all_species}
+    species_lookup = {s.latin_name: s.id for s in all_species}
 
     all_timestamps = timestamp_dao.get_all()
-    timestamp_lookup = {t.time: t.ID for t in all_timestamps}
+    timestamp_lookup = {t.time: t.id for t in all_timestamps}
 
     # Load all type-specific pageview files and concatenate
     print("Loading pageview data...")
@@ -153,14 +156,14 @@ with SessionFactory() as session:
             df_pageviews = pickle.load(fileobject)
 
     for index, row in df_pageviews.iterrows():
-        language_ID = language_lookup.get(row["language"])  # Use lookup
-        species_ID = species_lookup.get(row["species"])  # Use lookup
-        timestamp_ID = timestamp_lookup.get(row["timestamp"])  # Use lookup
+        language_id = language_lookup.get(row["language"])  # Use lookup
+        species_id = species_lookup.get(row["species"])  # Use lookup
+        timestamp_id = timestamp_lookup.get(row["timestamp"])  # Use lookup
 
         pageview_service.add_pageview(
-            timestamp_ID=timestamp_ID,
-            language_ID=language_ID,
-            species_ID=species_ID,
+            timestamp_id=timestamp_id,
+            language_id=language_id,
+            species_id=species_id,
             number_of_pageviews=row["number_of_pageviews"],
         )
 

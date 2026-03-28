@@ -15,14 +15,14 @@ from .base import Base
 
 class Species(Base):
     """
-    ORM model that maps to the 'Species' table in the database.
+    ORM model that maps to the 'species' table in the database.
     """
 
-    __tablename__ = "Species"
+    __tablename__ = "species"
 
-    ID: Mapped[int] = mapped_column("ID", Integer, primary_key=True)
-    latin_name: Mapped[str] = mapped_column("Latin_name", String)
-    type: Mapped[str] = mapped_column("Type", String)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    latin_name: Mapped[str] = mapped_column(String)
+    type: Mapped[str] = mapped_column(String)
 
     pageviews = relationship("Pageview", back_populates="species")
     # ranges = relationship("SpeciesRange", back_populates="species")  # Add when Species_Ranges table exists
@@ -30,15 +30,15 @@ class Species(Base):
 
 class Language(Base):
     """
-    ORM model that maps to the 'Languges' table in the database.
+    ORM model that maps to the 'languages' table in the database.
     """
 
-    __tablename__ = "Languages"
+    __tablename__ = "languages"
 
-    ID: Mapped[int] = mapped_column("ID", Integer, primary_key=True)
-    name: Mapped[str] = mapped_column("Name", String)
-    iso_639_3: Mapped[str] = mapped_column("ISO_639_3", String)
-    language_range: Mapped[str] = mapped_column("Language_Range", String)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String)
+    iso_639_3: Mapped[str] = mapped_column(String)
+    language_range: Mapped[str] = mapped_column(String)
 
     pageviews = relationship("Pageview", back_populates="language")
     # regions = relationship("LanguageRegion", back_populates="language")  # Add when Language_Regions table exists
@@ -46,32 +46,32 @@ class Language(Base):
 
 class Timestamp(Base):
     """
-    ORM model that maps to the 'Timestamps' table in the database.
+    ORM model that maps to the 'timestamps' table in the database.
     """
 
-    __tablename__ = "Timestamps"
+    __tablename__ = "timestamps"
 
-    ID: Mapped[int] = mapped_column("ID", Integer, primary_key=True)
-    time: Mapped[datetime.datetime] = mapped_column("Time", DateTime)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    time: Mapped[datetime.datetime] = mapped_column(DateTime)
 
     pageviews = relationship("Pageview", back_populates="timestamp")
 
 
 class Pageview(Base):
     """
-    ORM model that maps to the 'Pageviews' table in the database. Each pageview record links a
+    ORM model that maps to the 'pageviews' table in the database. Each pageview record links a
     timestamp, language, and species to a recorded number of pageviews.
     """
 
-    __tablename__ = "Pageviews"
+    __tablename__ = "pageviews"
 
-    ID: Mapped[int] = mapped_column("ID", Integer, primary_key=True)
-    timestamp_ID: Mapped[int] = mapped_column(
-        "Timestamp_ID", ForeignKey("Timestamps.ID")
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    timestamp_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("timestamps.id")
     )
-    language_ID: Mapped[int] = mapped_column("Language_ID", ForeignKey("Languages.ID"))
-    number_of_pageviews: Mapped[int] = mapped_column("Number_of_Pageviews", Integer)
-    species_ID: Mapped[int] = mapped_column("Species_ID", ForeignKey("Species.ID"))
+    language_id: Mapped[int] = mapped_column(Integer, ForeignKey("languages.id"))
+    number_of_pageviews: Mapped[int] = mapped_column(Integer)
+    species_id: Mapped[int] = mapped_column(Integer, ForeignKey("species.id"))
 
     timestamp: Mapped["Timestamp"] = relationship(
         "Timestamp", back_populates="pageviews"

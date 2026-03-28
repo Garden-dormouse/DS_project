@@ -66,17 +66,21 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertEqual(len(data), 1)
         self.assertEqual(data[0]["latin_name"], "Panthera leo")
 
-    def test_language_countries_known_code(self):
-        """Test /api/languages/<code>/countries returns countries for known language."""
-        response = self.client.get("/api/languages/eng/countries")
+    def test_language_range_known_code(self):
+        """Test /api/languages/<iso_code>/range returns GeoJSON for known language."""
+        response = self.client.get("/api/languages/eng/range")
 
         self.assertEqual(response.status_code, 200)
-        countries = response.get_json()
-        self.assertIn("USA", countries)
+        range_data = response.get_json()
+        self.assertIn("type", range_data)
+        self.assertEqual(range_data["type"], "FeatureCollection")
+        self.assertIn("features", range_data)
 
-    def test_language_countries_unknown_code(self):
-        """Test /api/languages/<code>/countries returns empty for unknown language."""
-        response = self.client.get("/api/languages/unknown123/countries")
+    def test_language_range_unknown_code(self):
+        """Test /api/languages/<iso_code>/range returns empty GeoJSON for unknown language."""
+        response = self.client.get("/api/languages/unknown123/range")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.get_json(), [])
+        range_data = response.get_json()
+        self.assertEqual(range_data["type"], "FeatureCollection")
+        self.assertEqual(range_data["features"], [])

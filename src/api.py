@@ -21,8 +21,7 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-DB_PATH = os.getenv("DB_PATH")
-DB_URL = f"sqlite:///{DB_PATH}"
+DB_URL = os.getenv("DB_URL")
 engine = get_engine(DB_URL)
 SessionFactory = get_session_factory(engine)
 

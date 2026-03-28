@@ -8,8 +8,8 @@ class SQLAlchemySpeciesDAO(SpeciesDAO):
     def __init__(self, session: Session):
         self.session = session
 
-    def get_by_id(self, species_ID: int) -> Species | None:
-        return self.session.get(Species, species_ID)
+    def get_by_id(self, species_id: int) -> Species | None:
+        return self.session.get(Species, species_id)
 
     def get_all(self):
         return self.session.query(Species).all()
