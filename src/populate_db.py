@@ -98,6 +98,8 @@ with SessionFactory() as session:
     df_languages["language_range"] = df_languages["glottocode"].apply(
         get_language_range
     )
+    # If no individual language range found, try macrolanguage range
+    pass
 
     for index, row in df_languages.iterrows():
         language_service.add_language(

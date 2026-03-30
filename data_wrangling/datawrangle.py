@@ -137,10 +137,6 @@ for animal_type in animal_types:
                 for ind in macro_to_individuals[iso]
                 if ind in iso_to_glotto
             }
-        elif iso in individuals_to_macro:
-            macr = individuals_to_macro[iso]
-            if macr in iso_to_glotto:
-                return {iso_to_glotto[macr]}
 
         # Direct match
         if iso in iso_to_glotto:
@@ -149,9 +145,23 @@ for animal_type in animal_types:
         # Empty set if no Glottocode found
         return set()
 
+    def get_macro_glottocode(iso):
+        if iso is None:
+            return None
+        if iso in individuals_to_macro:
+            macr = individuals_to_macro[iso]
+            return iso_to_glotto.get(macr)
+        elif iso in macro_to_individuals:
+            return iso_to_glotto.get(iso)
+
+        return None
+
     # Glottocodes as a semicolon-separated list
     df_languages["glottocode"] = df_languages["iso639_3"].apply(
         lambda iso: ";".join(sorted(get_glottocodes(iso))) or None
+    )
+    df_languages["macro_glottocode"] = df_languages["iso639_3"].apply(
+        get_macro_glottocode
     )
 
     ### PAGEVIEWS - creating table
