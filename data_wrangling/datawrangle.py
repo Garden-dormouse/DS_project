@@ -34,11 +34,13 @@ with open("./languages.csv", encoding="utf8") as f:
 
 print("Mapping macrolanguages to individual languages")
 macro_to_individuals = defaultdict(set)
+individuals_to_macro = {}
 with open("./iso-639-3-macrolanguages.tab", encoding="utf8") as f:
     next(f)
     for line in f:
         macro, individual, status = line.strip().split("\t")
         macro_to_individuals[macro].add(individual)
+        individuals_to_macro[individual] = macro
 
 
 ### ANIMAL TYPES TO PROCESS
@@ -135,11 +137,16 @@ for animal_type in animal_types:
                 for ind in macro_to_individuals[iso]
                 if ind in iso_to_glotto
             }
+        elif iso in individuals_to_macro:
+            macr = individuals_to_macro[iso]
+            if macr in iso_to_glotto:
+                return {iso_to_glotto[macr]}
 
         # Direct match
         if iso in iso_to_glotto:
             return {iso_to_glotto[iso]}
 
+        # Empty set if no Glottocode found
         return set()
 
     # Glottocodes as a semicolon-separated list
