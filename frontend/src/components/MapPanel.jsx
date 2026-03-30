@@ -13,9 +13,12 @@ export default function MapPanel({
   onStartMonthChange,
   onEndMonthChange,
   onResetRange,
+  availableMonths,
   accentColor = "#60A5FA",
   speciesType = null,
 }) {
+  const minMonth = availableMonths?.[0];
+  const maxMonth = availableMonths?.[availableMonths.length - 1];
   return (
     <div className="panelInner">
       <div className="panelHeader">
@@ -35,6 +38,8 @@ export default function MapPanel({
               className="control control--compact"
               type="month"
               value={startMonth || ""}
+              min={minMonth}
+              max={maxMonth}
               onChange={(e) => onStartMonthChange(e.target.value || null)}
             />
           </div>
@@ -45,6 +50,8 @@ export default function MapPanel({
               className="control control--compact"
               type="month"
               value={endMonth || ""}
+              min={minMonth}
+              max={maxMonth}
               onChange={(e) => onEndMonthChange(e.target.value || null)}
             />
           </div>

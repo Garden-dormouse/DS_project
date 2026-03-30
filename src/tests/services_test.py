@@ -46,22 +46,110 @@ class TestPageviewService(unittest.TestCase):
         self.assertEqual(result[0]["pageviews"], 150)
         self.assertEqual(result[1]["pageviews"], 75)
 
+    def test_add_single_pageview(self):
+        """Test adding a single pageview."""
+        mock_dao = Mock()
+        service = PageviewService(mock_dao)
+
+        service.add_pageview(
+            timestamp_id=1, language_id=2, species_id=3, number_of_pageviews=42
+        )
+
+        mock_dao.create_single.assert_called_once_with(
+            timestamp_id=1, language_id=2, species_id=3, number_of_pageviews=42
+        )
+
+    def test_get_top_species_with_date_range(self):
+        """Test getting top species with date range filters."""
+        mock_dao = Mock()
+        service = PageviewService(mock_dao)
+
+        mock_dao.get_top_species_by_language.return_value = [
+            (1, "Panthera leo", 500),
+        ]
+
+        result = service.get_top_species_for_language(
+            language_code="eng",
+            limit=10,
+            start_month="2025-12",
+            end_month="2026-01",
+            species_type="mammal",
+        )
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["latin_name"], "Panthera leo")
+        mock_dao.get_top_species_by_language.assert_called_once_with(
+            language_code="eng",
+            limit=10,
+            start_month="2025-12",
+            end_month="2026-01",
+            species_type="mammal",
+        )
+
     def test_get_languages_map_data(self):
-        """Test language to country mapping."""
+        """Test language map data returns language codes with pageviews."""
         mock_dao = Mock()
         service = PageviewService(mock_dao)
 
         # Mock the DAO response
         mock_dao.get_total_pageviews_by_language.return_value = [
-            ("en", 300),
-            ("fi", 50),
+            ("eng", 300),
+            ("fin", 50),
         ]
 
         result = service.get_languages_map_data()
 
-        self.assertEqual(result["USA"], 300)  # en maps to USA
-        self.assertEqual(result["FIN"], 50)  # fi maps to FIN
-        mock_dao.get_total_pageviews_by_language.assert_called_once_with(None)
+        self.assertEqual(result["eng"], 300)  # Language code with pageviews
+        self.assertEqual(result["fin"], 50)  # Language code with pageviews
+        mock_dao.get_total_pageviews_by_language.assert_called_once_with(
+            month=None, species_type=None
+        )
+
+    def test_get_languages_map_data_with_filters(self):
+        """Test language map data with month and species type filters."""
+        mock_dao = Mock()
+        service = PageviewService(mock_dao)
+
+        mock_dao.get_total_pageviews_by_language.return_value = [("eng", 150)]
+
+        result = service.get_languages_map_data(month="2026-01", species_type="mammal")
+
+        self.assertEqual(result["eng"], 150)
+        mock_dao.get_total_pageviews_by_language.assert_called_once_with(
+            month="2026-01", species_type="mammal"
+        )
+
+    def test_get_timeseries(self):
+        """Test timeseries data transformation."""
+        mock_dao = Mock()
+        service = PageviewService(mock_dao)
+
+        mock_dao.get_timeseries_by_language.return_value = [
+            ("2025-12", 1000),
+            ("2026-01", 1200),
+        ]
+
+        result = service.get_timeseries(language_code="eng")
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]["month"], "2025-12")
+        self.assertEqual(result[0]["pageviews"], 1000)
+        self.assertEqual(result[1]["month"], "2026-01")
+
+    def test_add_pageviews_batch(self):
+        """Test adding multiple pageviews at once."""
+        mock_dao = Mock()
+        service = PageviewService(mock_dao)
+
+        pageviews = [
+            (1, 1, 1, 100),
+            (1, 1, 2, 50),
+            (2, 2, 1, 75),
+        ]
+
+        service.add_many_pageviews(pageviews)
+
+        mock_dao.create_many.assert_called_once_with(pageviews)
 
 
 class TestTimestampService(unittest.TestCase):
@@ -84,6 +172,16 @@ class TestTimestampService(unittest.TestCase):
         self.assertEqual(result[0], "2025-12")
         self.assertEqual(result[1], "2026-01")
 
+    def test_add_timestamp(self):
+        """Test adding a single timestamp."""
+        mock_dao = Mock()
+        service = TimestampService(mock_dao)
+
+        test_date = datetime.date(2026, 1, 15)
+        service.add_timestamp(test_date)
+
+        mock_dao.create.assert_called_once_with(test_date)
+
 
 class TestLanguageService(unittest.TestCase):
 
@@ -96,6 +194,44 @@ class TestLanguageService(unittest.TestCase):
 
         mock_dao.create.assert_called_once_with("English", "eng", "stan1293")
 
+    def test_get_range_by_iso(self):
+        """Test retrieving language range by ISO code."""
+        mock_dao = Mock()
+        service = LanguageService(mock_dao)
+
+        mock_lang = Mock()
+        mock_lang.language_range = '{"type": "FeatureCollection", "features": []}'
+        mock_dao.get_by_iso.return_value = mock_lang
+
+        result = service.get_range_by_iso("eng")
+
+        self.assertEqual(result["type"], "FeatureCollection")
+        mock_dao.get_by_iso.assert_called_once_with("eng")
+
+    def test_get_range_by_iso_not_found(self):
+        """Test retrieving language range returns empty dict if language not found."""
+        mock_dao = Mock()
+        service = LanguageService(mock_dao)
+        mock_dao.get_by_iso.return_value = None
+
+        result = service.get_range_by_iso("unknown")
+
+        self.assertEqual(result, {})
+
+    def test_get_range_by_name(self):
+        """Test retrieving language range by language name."""
+        mock_dao = Mock()
+        service = LanguageService(mock_dao)
+
+        mock_lang = Mock()
+        mock_lang.language_range = '{"type": "FeatureCollection", "features": []}'
+        mock_dao.get_by_name.return_value = mock_lang
+
+        result = service.get_range_by_name("English")
+
+        self.assertEqual(result["type"], "FeatureCollection")
+        mock_dao.get_by_name.assert_called_once_with("English")
+
 
 class TestSpeciesService(unittest.TestCase):
 
@@ -106,4 +242,19 @@ class TestSpeciesService(unittest.TestCase):
 
         service.add_species(latin_name="Panthera leo", species_type="mammal")
 
-        mock_dao.create.assert_called_once_with("Panthera leo", "mammal")
+        mock_dao.create_single.assert_called_once_with("Panthera leo", "mammal")
+
+    def test_add_many_species(self):
+        """Test adding multiple species at once."""
+        mock_dao = Mock()
+        service = SpeciesService(mock_dao)
+
+        species_list = [
+            ("Panthera leo", "mammal"),
+            ("Aquila chrysaetos", "bird"),
+            ("Crocodylus niloticus", "reptile"),
+        ]
+
+        service.add_many_species(species_list)
+
+        mock_dao.create_many.assert_called_once_with(species_list)

@@ -25,7 +25,7 @@ class TestAPIEndpoints(unittest.TestCase):
 
             with patch("api.SQLAlchemySpeciesDAO") as mock_dao:
                 mock_species = Mock()
-                mock_species.ID = 1
+                mock_species.id = 1
                 mock_species.latin_name = "Panthera leo"
                 mock_dao.return_value.get_all.return_value = [mock_species]
 
@@ -34,7 +34,16 @@ class TestAPIEndpoints(unittest.TestCase):
                 self.assertEqual(response.status_code, 200)
                 data = response.get_json()
                 self.assertEqual(len(data), 1)
+                self.assertEqual(data[0]["id"], 1)
                 self.assertEqual(data[0]["latin_name"], "Panthera leo")
+
+    def test_get_species_types(self):
+        """Test /api/species/types endpoint returns available species types."""
+        response = self.client.get("/api/species/types")
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(data, ["mammal", "bird", "reptile"])
 
     def test_top_species_requires_language_code(self):
         """Test /api/pageviews/top-species without query param returns empty."""
@@ -84,3 +93,95 @@ class TestAPIEndpoints(unittest.TestCase):
         range_data = response.get_json()
         self.assertEqual(range_data["type"], "FeatureCollection")
         self.assertEqual(range_data["features"], [])
+
+    @patch("api.SessionFactory")
+    @patch("api.SQLAlchemyLanguageDAO")
+    def test_get_languages(self, mock_language_dao, mock_session_factory):
+        """Test /api/languages endpoint returns list of languages."""
+        mock_session = Mock()
+        mock_session_factory.return_value.__enter__.return_value = mock_session
+
+        mock_lang1 = Mock()
+        mock_lang1.iso_639_3 = "eng"
+        mock_lang1.name = "English"
+
+        mock_lang2 = Mock()
+        mock_lang2.iso_639_3 = "fin"
+        mock_lang2.name = "Finnish"
+
+        mock_language_dao.return_value.get_all.return_value = [mock_lang1, mock_lang2]
+
+        response = self.client.get("/api/languages")
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(len(data), 2)
+        self.assertIn("eng", {item["code"] for item in data})
+        self.assertIn("fin", {item["code"] for item in data})
+
+    @patch("api.SessionFactory")
+    @patch("api.SQLAlchemyTimestampDAO")
+    def test_get_available_months(self, mock_timestamp_dao, mock_session_factory):
+        """Test /api/timestamps/months endpoint returns available months."""
+        mock_session = Mock()
+        mock_session_factory.return_value.__enter__.return_value = mock_session
+
+        mock_timestamp_service = Mock()
+        mock_timestamp_service.get_available_months.return_value = [
+            "2025-12",
+            "2026-01",
+        ]
+
+        with patch("api.TimestampService", return_value=mock_timestamp_service):
+            response = self.client.get("/api/timestamps/months")
+
+            self.assertEqual(response.status_code, 200)
+            data = response.get_json()
+            self.assertEqual(len(data), 2)
+            self.assertIn("2025-12", data)
+            self.assertIn("2026-01", data)
+
+    @patch("api.SessionFactory")
+    @patch("api.SQLAlchemyPageviewDAO")
+    def test_get_languages_map_data(self, mock_pageview_dao, mock_session_factory):
+        """Test /api/languages/map-data returns language pageview counts."""
+        mock_session = Mock()
+        mock_session_factory.return_value.__enter__.return_value = mock_session
+
+        mock_pageview_service = Mock()
+        mock_pageview_service.get_languages_map_data.return_value = {
+            "eng": 300,
+            "fin": 50,
+        }
+
+        with patch("api.PageviewService", return_value=mock_pageview_service):
+            response = self.client.get("/api/languages/map-data?month=2026-01")
+
+            self.assertEqual(response.status_code, 200)
+            data = response.get_json()
+            self.assertEqual(data["eng"], 300)
+            self.assertEqual(data["fin"], 50)
+
+    @patch("api.SessionFactory")
+    @patch("api.SQLAlchemyPageviewDAO")
+    def test_get_timeseries(self, mock_pageview_dao, mock_session_factory):
+        """Test /api/pageviews/timeseries returns monthly pageview data."""
+        mock_session = Mock()
+        mock_session_factory.return_value.__enter__.return_value = mock_session
+
+        mock_pageview_service = Mock()
+        mock_pageview_service.get_timeseries.return_value = [
+            {"month": "2025-12", "pageviews": 1000},
+            {"month": "2026-01", "pageviews": 1200},
+        ]
+
+        with patch("api.PageviewService", return_value=mock_pageview_service):
+            response = self.client.get(
+                "/api/pageviews/timeseries?language_code=eng&start_month=2025-12&end_month=2026-01"
+            )
+
+            self.assertEqual(response.status_code, 200)
+            data = response.get_json()
+            self.assertEqual(len(data), 2)
+            self.assertEqual(data[0]["month"], "2025-12")
+            self.assertEqual(data[1]["pageviews"], 1200)

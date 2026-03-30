@@ -172,11 +172,6 @@ export default function App() {
         setLanguages(safeLanguages);
         setAvailableMonths(safeMonths);
         setSpeciesTypes(safeSpeciesTypes);
-
-        if (safeMonths.length) {
-          setStartMonth(safeMonths[0]);
-          setEndMonth(safeMonths[safeMonths.length - 1]);
-        }
       } catch (err) {
         setError(err.message || "Failed to load initial data");
         console.error("Error loading data:", err);
@@ -203,7 +198,7 @@ export default function App() {
   useEffect(() => {
     async function fetchMapData() {
       try {
-        if (!availableMonths.length) {
+        if (!startMonth || !endMonth || !availableMonths.length) {
           setMapIntensityByIso3({});
           return;
         }
@@ -448,6 +443,7 @@ export default function App() {
               onStartMonthChange={handleStartMonthChange}
               onEndMonthChange={handleEndMonthChange}
               onResetRange={handleResetRange}
+              availableMonths={availableMonths}
               accentColor={activeTypeColor}
               speciesType={selectedSpeciesType}
             />

@@ -38,7 +38,8 @@ for feature in geo["features"]:
     g = feature["properties"].get("cldf:languageReference")
     if g:
         geo_by_glottocode.setdefault(g, []).append(feature)
-        
+
+
 def normalize_timestamp_key(value):
     """Normalize pandas/python/sqlite timestamps to one comparable string key."""
     if value is None:
@@ -48,7 +49,8 @@ def normalize_timestamp_key(value):
     if pd.isna(ts):
         return None
 
-    return ts.strftime("%Y-%m-%d %H:%M:%S")
+    return ts.strftime("%Y-%m-%d")
+
 
 with SessionFactory() as session:
     species_dao = SQLAlchemySpeciesDAO(session)
@@ -186,7 +188,14 @@ with SessionFactory() as session:
         ].iterrows():  # go through each row in the batch
             language_id = language_lookup.get(row["language"])  # Use lookup
             species_id = species_lookup.get(row["species"])  # Use lookup
-            timestamp_id = timestamp_lookup.get(row["timestamp"])  # Use lookup
+            timestamp_id = timestamp_lookup.get(
+                normalize_timestamp_key(row["timestamp"])
+            )  # Use lookup
+            if (
+                language_id is None or species_id is None or timestamp_id is None
+            ):  # Only add if all IDs are found
+                continue
+
             pageviews_list.append(
                 (timestamp_id, language_id, species_id, row["number_of_pageviews"])
             )  # add all rows to pageviews_list

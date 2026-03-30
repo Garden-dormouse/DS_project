@@ -32,7 +32,7 @@ def get_species():
     with SessionFactory() as session:
         species_dao = SQLAlchemySpeciesDAO(session)
         species = species_dao.get_all()
-        return jsonify([{"id": s.ID, "latin_name": s.latin_name} for s in species])
+        return jsonify([{"id": s.id, "latin_name": s.latin_name} for s in species])
 
 
 @app.route("/api/species/types", methods=["GET"])

@@ -1,8 +1,21 @@
+from datetime import date
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from db_module.dao.abstract import PageviewDAO
 from db_module.models import Language, Pageview, Species, Timestamp
+
+
+def _month_range(month_str: str) -> tuple[date, date]:
+    """Convert YYYY-MM string to (start_date, end_date) for the month."""
+    year, month_num = map(int, month_str.split("-"))
+    start = date(year, month_num, 1)
+    # End of month is first day of next month (exclusive)
+    if month_num == 12:
+        end = date(year + 1, 1, 1)
+    else:
+        end = date(year, month_num + 1, 1)
+    return start, end
 
 
 class SQLAlchemyPageviewDAO(PageviewDAO):
@@ -36,10 +49,12 @@ class SQLAlchemyPageviewDAO(PageviewDAO):
         )
 
         if start_month:
-            query = query.filter(func.to_char(Timestamp.time, "YYYY-MM") >= start_month)
+            start_date, _ = _month_range(start_month)
+            query = query.filter(Timestamp.time >= start_date)
 
         if end_month:
-            query = query.filter(func.to_char(Timestamp.time, "YYYY-MM") <= end_month)
+            _, end_date = _month_range(end_month)
+            query = query.filter(Timestamp.time < end_date)
 
         if species_type:
             query = query.filter(Species.type == species_type)
@@ -64,7 +79,7 @@ class SQLAlchemyPageviewDAO(PageviewDAO):
         end_month: str | None = None,
         species_type: str | None = None,
     ) -> list[tuple[str, int]]:
-        month_label = func.strftime("%Y-%m", Timestamp.time)
+        month_label = func.to_char(Timestamp.time, "YYYY-MM")
 
         query = (
             self.session.query(
@@ -78,13 +93,15 @@ class SQLAlchemyPageviewDAO(PageviewDAO):
         )
 
         if species_id is not None:
-            query = query.filter(Species.ID == species_id)
+            query = query.filter(Species.id == species_id)
 
         if start_month:
-            query = query.filter(month_label >= start_month)
+            start_date, _ = _month_range(start_month)
+            query = query.filter(Timestamp.time >= start_date)
 
         if end_month:
-            query = query.filter(month_label <= end_month)
+            _, end_date = _month_range(end_month)
+            query = query.filter(Timestamp.time < end_date)
 
         if species_type:
             query = query.filter(Species.type == species_type)
@@ -110,7 +127,9 @@ class SQLAlchemyPageviewDAO(PageviewDAO):
         )
 
         if month:
-            query = query.filter(func.to_char(Timestamp.time, "YYYY-MM") == month)
+            start_date, end_date = _month_range(month)
+            query = query.filter(Timestamp.time >= start_date)
+            query = query.filter(Timestamp.time < end_date)
 
         if species_type:
             query = query.filter(Species.type == species_type)

@@ -41,45 +41,19 @@ class PageviewService:
             species_type=species_type,
         )
 
-        return [
-            {"month": month, "pageviews": int(total)}
-            for month, total in rows
-        ]
+        return [{"month": month, "pageviews": int(total)} for month, total in rows]
 
     def get_languages_map_data(
         self,
         month: str | None = None,
         species_type: str | None = None,
     ) -> dict[str, int]:
-        lang_to_country = {
-            "eng": "USA",
-            "fin": "FIN",
-            "swe": "SWE",
-            "fra": "FRA",
-            "deu": "DEU",
-            "spa": "ESP",
-            "zho": "CHN",
-            "jpn": "JPN",
-            "por": "PRT",
-            "ita": "ITA",
-            "rus": "RUS",
-            "ara": "SAU",
-            "nld": "NLD",
-            "pol": "POL",
-            "tur": "TUR",
-            "kor": "KOR",
-        }
-
         raw_results = self.pageview_dao.get_total_pageviews_by_language(
             month=month,
             species_type=species_type,
         )
 
-        return {
-            lang_to_country.get(lang, lang.upper()): int(total)
-            for lang, total in raw_results
-            if lang
-        }
+        return {lang: int(total) for lang, total in raw_results if lang}
 
     def add_pageview(
         self,
