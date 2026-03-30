@@ -11,49 +11,74 @@ class PageviewService:
         limit: int = 20,
         start_month: str | None = None,
         end_month: str | None = None,
+        species_type: str | None = None,
     ):
-        """
-        Return top species by pageviews for a language within an optional month range.
-        """
         top_species = self.pageview_dao.get_top_species_by_language(
             language_code=language_code,
             limit=limit,
             start_month=start_month,
             end_month=end_month,
+            species_type=species_type,
         )
         return [
             {"id": species_id, "latin_name": latin_name, "pageviews": int(total)}
             for species_id, latin_name, total in top_species
         ]
 
-    def get_languages_map_data(self, month: str | None = None) -> dict[str, int]:
-        """
-        Return total pageviews per language, mapped to ISO3 country codes.
-        """
+    def get_timeseries(
+        self,
+        language_code: str,
+        species_id: int | None = None,
+        start_month: str | None = None,
+        end_month: str | None = None,
+        species_type: str | None = None,
+    ):
+        rows = self.pageview_dao.get_timeseries_by_language(
+            language_code=language_code,
+            species_id=species_id,
+            start_month=start_month,
+            end_month=end_month,
+            species_type=species_type,
+        )
+
+        return [
+            {"month": month, "pageviews": int(total)}
+            for month, total in rows
+        ]
+
+    def get_languages_map_data(
+        self,
+        month: str | None = None,
+        species_type: str | None = None,
+    ) -> dict[str, int]:
         lang_to_country = {
-            "en": "USA",
-            "fi": "FIN",
-            "sv": "SWE",
-            "fr": "FRA",
-            "de": "DEU",
-            "es": "ESP",
-            "zh": "CHN",
-            "ja": "JPN",
-            "pt": "PRT",
-            "it": "ITA",
-            "ru": "RUS",
-            "ar": "SAU",
-            "nl": "NLD",
-            "pl": "POL",
-            "tr": "TUR",
-            "ko": "KOR",
+            "eng": "USA",
+            "fin": "FIN",
+            "swe": "SWE",
+            "fra": "FRA",
+            "deu": "DEU",
+            "spa": "ESP",
+            "zho": "CHN",
+            "jpn": "JPN",
+            "por": "PRT",
+            "ita": "ITA",
+            "rus": "RUS",
+            "ara": "SAU",
+            "nld": "NLD",
+            "pol": "POL",
+            "tur": "TUR",
+            "kor": "KOR",
         }
 
-        raw_results = self.pageview_dao.get_total_pageviews_by_language(month)
+        raw_results = self.pageview_dao.get_total_pageviews_by_language(
+            month=month,
+            species_type=species_type,
+        )
 
         return {
             lang_to_country.get(lang, lang.upper()): int(total)
             for lang, total in raw_results
+            if lang
         }
 
     def add_pageview(

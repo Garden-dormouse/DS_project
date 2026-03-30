@@ -40,6 +40,17 @@ for feature in geo["features"]:
     g = feature["properties"].get("cldf:languageReference")
     if g:
         geo_by_glottocode.setdefault(g, []).append(feature)
+        
+def normalize_timestamp_key(value):
+    """Normalize pandas/python/sqlite timestamps to one comparable string key."""
+    if value is None:
+        return None
+
+    ts = pd.to_datetime(value, errors="coerce")
+    if pd.isna(ts):
+        return None
+
+    return ts.strftime("%Y-%m-%d %H:%M:%S")
 
 with SessionFactory() as session:
     species_dao = SQLAlchemySpeciesDAO(session)
@@ -135,7 +146,11 @@ with SessionFactory() as session:
     species_lookup = {s.latin_name: s.ID for s in all_species}
 
     all_timestamps = timestamp_dao.get_all()
-    timestamp_lookup = {t.time: t.ID for t in all_timestamps}
+    timestamp_lookup = {
+        normalize_timestamp_key(t.time): t.ID
+        for t in all_timestamps
+        if normalize_timestamp_key(t.time) is not None
+    }
 
     # Load all type-specific pageview files and concatenate
     print("Loading pageview data...")
@@ -153,9 +168,19 @@ with SessionFactory() as session:
             df_pageviews = pickle.load(fileobject)
 
     for index, row in df_pageviews.iterrows():
-        language_ID = language_lookup.get(row["language"])  # Use lookup
-        species_ID = species_lookup.get(row["species"])  # Use lookup
-        timestamp_ID = timestamp_lookup.get(row["timestamp"])  # Use lookup
+        language_ID = language_lookup.get(row["language"])
+        species_ID = species_lookup.get(row["species"])
+        timestamp_ID = timestamp_lookup.get(normalize_timestamp_key(row["timestamp"]))
+
+        # Skip bad rows instead of crashing
+        if not language_ID or not species_ID or not timestamp_ID:
+            if index < 20:
+                print(
+                    f"Skipping row {index}: "
+                    f"language_ID={language_ID}, species_ID={species_ID}, timestamp_ID={timestamp_ID}, "
+                    f"timestamp={row['timestamp']}"
+                )
+            continue
 
         pageview_service.add_pageview(
             timestamp_ID=timestamp_ID,

@@ -11,6 +11,12 @@ export const api = {
     return response.json();
   },
 
+  async getSpeciesTypes() {
+    const response = await fetch(`${API_BASE_URL}/species/types`);
+    if (!response.ok) throw new Error("Failed to fetch species types");
+    return response.json();
+  },
+
   async getLanguages() {
     const response = await fetch(`${API_BASE_URL}/languages`);
     if (!response.ok) throw new Error("Failed to fetch languages");
@@ -19,7 +25,9 @@ export const api = {
 
   async getLanguagesMapData(filters = {}) {
     const params = new URLSearchParams();
+
     if (filters.month) params.append("month", filters.month);
+    if (filters.speciesType) params.append("species_type", filters.speciesType);
 
     const response = await fetch(`${API_BASE_URL}/languages/map-data?${params}`);
     if (!response.ok) throw new Error("Failed to fetch language map data");
@@ -47,9 +55,24 @@ export const api = {
     if (options.limit) params.append("limit", options.limit);
     if (options.startMonth) params.append("start_month", options.startMonth);
     if (options.endMonth) params.append("end_month", options.endMonth);
+    if (options.speciesType) params.append("species_type", options.speciesType);
 
     const response = await fetch(`${API_BASE_URL}/pageviews/top-species?${params}`);
     if (!response.ok) throw new Error("Failed to fetch top species");
+    return response.json();
+  },
+
+  async getTimeseries(options = {}) {
+    const params = new URLSearchParams();
+
+    if (options.languageCode) params.append("language_code", options.languageCode);
+    if (options.speciesId != null) params.append("species_id", options.speciesId);
+    if (options.startMonth) params.append("start_month", options.startMonth);
+    if (options.endMonth) params.append("end_month", options.endMonth);
+    if (options.speciesType) params.append("species_type", options.speciesType);
+
+    const response = await fetch(`${API_BASE_URL}/pageviews/timeseries?${params}`);
+    if (!response.ok) throw new Error("Failed to fetch timeseries");
     return response.json();
   },
 };

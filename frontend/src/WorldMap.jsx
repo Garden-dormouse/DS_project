@@ -1,12 +1,36 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { geoNaturalEarth1, geoPath } from "d3-geo";
 
+function hexToRgb(hex) {
+  const safeHex = hex.replace("#", "");
+  const normalized =
+    safeHex.length === 3
+      ? safeHex
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : safeHex;
+
+  const int = parseInt(normalized, 16);
+  return {
+    r: (int >> 16) & 255,
+    g: (int >> 8) & 255,
+    b: int & 255,
+  };
+}
+
+function rgbaFromHex(hex, alpha) {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 export default function WorldMap({
   geojsonUrl = "/data/world.geojson",
   onCountryClick,
   selectedIso3,
   languageRange = null,
   valueByIso3 = {},
+  accentColor = "#60A5FA",
 }) {
   const width = 1200;
   const height = 640;
@@ -58,7 +82,6 @@ export default function WorldMap({
   }, [valueByIso3]);
 
   function getIso3(feature) {
-    // Check feature.id first (most common in Natural Earth data)
     if (feature.id) return feature.id;
     const p = feature.properties || {};
     return p.iso_a3 || p.ISO_A3 || p.ADM0_A3 || p.ISO3 || null;
@@ -71,11 +94,11 @@ export default function WorldMap({
 
   function fillForIso3(iso3) {
     if (!iso3) return "rgba(255,255,255,0.03)";
-    
+
     const v = valueByIso3[iso3] ?? 0;
     const t = Math.min(1, v / maxValue);
     const a = 0.06 + 0.30 * t;
-    return `rgba(96, 165, 250, ${a})`;
+    return rgbaFromHex(accentColor, a);
   }
 
   return (
@@ -109,9 +132,11 @@ export default function WorldMap({
             const iso3 = getIso3(feature);
             const name = getName(feature);
             const isSelected = iso3 && selectedIso3 === iso3;
-            
-            const strokeColor = isSelected ? "rgba(52,211,153,0.9)" : "rgba(255,255,255,0.10)";
-            const strokeWidth = isSelected ? 1.6 : 0.8;
+
+            const strokeColor = isSelected
+              ? rgbaFromHex(accentColor, 0.95)
+              : "rgba(255,255,255,0.10)";
+            const strokeWidth = isSelected ? 1.8 : 0.8;
 
             return (
               <path
@@ -127,7 +152,6 @@ export default function WorldMap({
                 onMouseLeave={() => setHover(null)}
                 onClick={(e) => {
                   e.stopPropagation();
-                  console.log('Clicked country:', name, 'ISO3:', iso3);
                   if (iso3 && onCountryClick) {
                     onCountryClick(iso3);
                   }
@@ -136,8 +160,7 @@ export default function WorldMap({
               />
             );
           })}
-          
-          {/* Language range polygon overlay */}
+
           {languageRange && languageRange.features && path && projection && (
             languageRange.features.map((feature, idx) => {
               const d = path(feature);
@@ -145,8 +168,8 @@ export default function WorldMap({
                 <path
                   key={`lang-range-${idx}`}
                   d={d}
-                  fill="rgba(139, 92, 246, 0.15)"
-                  stroke="rgba(139, 92, 246, 0.6)"
+                  fill={rgbaFromHex(accentColor, 0.14)}
+                  stroke={rgbaFromHex(accentColor, 0.70)}
                   strokeWidth={1.5}
                   pointerEvents="none"
                 />
