@@ -1,41 +1,41 @@
 BEGIN;
 
-CREATE TABLE Species (
-    ID SERIAL PRIMARY KEY,
-    Latin_name TEXT NOT NULL UNIQUE,
-    Type TEXT
+CREATE TABLE species (
+    id SERIAL PRIMARY KEY,
+    latin_name TEXT NOT NULL UNIQUE,
+    type TEXT
 );
 
-CREATE TABLE Languages (
-    ID SERIAL PRIMARY KEY,
-    Name TEXT NOT NULL UNIQUE,
-    ISO_639_3 TEXT UNIQUE,
-    Language_Range TEXT
+CREATE TABLE languages (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    iso_639_3 TEXT UNIQUE,
+    language_range TEXT
 );
 
-CREATE TABLE Timestamps (
-    ID SERIAL PRIMARY KEY,
-    Time DATE NOT NULL UNIQUE
+CREATE TABLE timestamps (
+    id SERIAL PRIMARY KEY,
+    time DATE NOT NULL UNIQUE
 );
 
-CREATE TABLE Pageviews (
-    ID SERIAL PRIMARY KEY,
-    Timestamp_ID INTEGER NOT NULL,
-    Language_ID INTEGER NOT NULL,
-    Number_of_Pageviews INTEGER NOT NULL,
-    Species_ID INTEGER NOT NULL,
+CREATE TABLE pageviews (
+    id SERIAL PRIMARY KEY,
+    timestamp_id INTEGER NOT NULL,
+    language_id INTEGER NOT NULL,
+    number_of_pageviews INTEGER NOT NULL,
+    species_id INTEGER NOT NULL,
 
-    UNIQUE(Timestamp_ID, Language_ID, Species_ID),
+    UNIQUE(timestamp_id, language_id, species_id),
 
-    FOREIGN KEY (Timestamp_ID) REFERENCES Timestamps(ID),
-    FOREIGN KEY (Language_ID) REFERENCES Languages(ID),
-    FOREIGN KEY (Species_ID) REFERENCES Species(ID)
+    FOREIGN KEY (timestamp_id) REFERENCES timestamps(id),
+    FOREIGN KEY (language_id) REFERENCES languages(id),
+    FOREIGN KEY (species_id) REFERENCES species(id)
 );
 
 
-CREATE INDEX idx_pageviews_timestamp ON Pageviews(Timestamp_ID);
-CREATE INDEX idx_pageviews_language ON Pageviews(Language_ID);
-CREATE INDEX idx_pageviews_species ON Pageviews(Species_ID);
-CREATE INDEX idx_pageviews_combined ON Pageviews(Timestamp_ID, Language_ID, Species_ID);
+CREATE INDEX idx_pageviews_timestamp ON pageviews(timestamp_id);
+CREATE INDEX idx_pageviews_language ON pageviews(language_id);
+CREATE INDEX idx_pageviews_species ON pageviews(species_id);
+CREATE INDEX idx_pageviews_combined ON pageviews(timestamp_id, language_id, species_id);
 
 COMMIT;
