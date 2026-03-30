@@ -88,9 +88,12 @@ class PageviewService:
         species_ID: int,
         number_of_pageviews: int,
     ):
-        return self.pageview_dao.create(
+        return self.pageview_dao.create_single(
             timestamp_ID=timestamp_ID,
             language_ID=language_ID,
             species_ID=species_ID,
             number_of_pageviews=number_of_pageviews,
         )
+
+    def add_many_pageviews(self, pageviews_list: list[tuple[int, int, int, int]]):
+        return self.pageview_dao.create_many(pageviews_list)

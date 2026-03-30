@@ -70,9 +70,9 @@ df_time.to_pickle("./df_time.pkl")
 
 # Process each animal type
 for animal_type in animal_types:
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"Processing {animal_type}")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
 
     raw_data = f"pageview_{animal_type}_monthly"
 
@@ -186,14 +186,17 @@ for animal_type in animal_types:
     ### Saving tables as pickle files
     print(f"Saving {animal_type} tables to pickle files")
     print(df_species.dtypes)
+    print(df_species.shape)
     df_species.to_pickle(f"./df_species_{animal_type}.pkl")
 
     print(df_languages.dtypes)
+    print(df_languages.shape)
     df_languages.to_pickle(f"./df_languages_{animal_type}.pkl")
 
     print(df_pageviews.dtypes)
+    print(df_pageviews.shape)
     df_pageviews.to_pickle(f"./df_pageviews_{animal_type}.pkl")
 
-print(f"\n{'='*50}")
+print(f"\n{'=' * 50}")
 print("All animal types processed successfully!")
-print(f"{'='*50}")
+print(f"{'=' * 50}")
