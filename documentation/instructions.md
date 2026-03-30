@@ -1,7 +1,7 @@
 ## Commands
 Create .env file with the following variables:
 ```
-DB_PATH
+DB_URL
 MIGRATIONS_DIR
 ```
 Create venv:

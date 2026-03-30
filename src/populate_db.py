@@ -19,9 +19,7 @@ from services.timestamp_service import TimestampService
 
 load_dotenv()
 
-DB_PATH = os.getenv("DB_PATH")
-
-DB_URL = f"sqlite:///{DB_PATH}"
+DB_URL = os.getenv("DB_URL")
 engine = get_engine(DB_URL)
 SessionFactory = get_session_factory(engine)
 
@@ -103,6 +101,11 @@ with SessionFactory() as session:
             return None
         return json.dumps({"type": "FeatureCollection", "features": polygons})
 
+    # Remove duplicates based on language name
+    df_languages = df_languages.drop_duplicates(subset=["language"], keep="first")
+    # Also remove duplicates based on ISO code
+    df_languages = df_languages.drop_duplicates(subset=["iso639_3"], keep="first")
+
     df_languages["language_range"] = df_languages["glottocode"].apply(
         get_language_range
     )
@@ -142,14 +145,14 @@ with SessionFactory() as session:
         timestamp_service.add_timestamp(row["timestamp"])
 
     all_languages = language_dao.get_all()
-    language_lookup = {lang.name: lang.ID for lang in all_languages}
+    language_lookup = {lang.name: lang.id for lang in all_languages}
 
     all_species = species_dao.get_all()
-    species_lookup = {s.latin_name: s.ID for s in all_species}
+    species_lookup = {s.latin_name: s.id for s in all_species}
 
     all_timestamps = timestamp_dao.get_all()
     timestamp_lookup = {
-        normalize_timestamp_key(t.time): t.ID
+        normalize_timestamp_key(t.time): t.id
         for t in all_timestamps
         if normalize_timestamp_key(t.time) is not None
     }
@@ -181,11 +184,11 @@ with SessionFactory() as session:
         for index, row in df_pageviews.iloc[
             k * batch_size : min((k + 1) * batch_size, len(df_pageviews))
         ].iterrows():  # go through each row in the batch
-            language_ID = language_lookup.get(row["language"])  # Use lookup
-            species_ID = species_lookup.get(row["species"])  # Use lookup
-            timestamp_ID = timestamp_lookup.get(row["timestamp"])  # Use lookup
+            language_id = language_lookup.get(row["language"])  # Use lookup
+            species_id = species_lookup.get(row["species"])  # Use lookup
+            timestamp_id = timestamp_lookup.get(row["timestamp"])  # Use lookup
             pageviews_list.append(
-                (timestamp_ID, language_ID, species_ID, row["number_of_pageviews"])
+                (timestamp_id, language_id, species_id, row["number_of_pageviews"])
             )  # add all rows to pageviews_list
 
         pageview_service.add_many_pageviews(

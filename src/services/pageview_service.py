@@ -83,15 +83,15 @@ class PageviewService:
 
     def add_pageview(
         self,
-        timestamp_ID: int,
-        language_ID: int,
-        species_ID: int,
+        timestamp_id: int,
+        language_id: int,
+        species_id: int,
         number_of_pageviews: int,
     ):
         return self.pageview_dao.create_single(
-            timestamp_ID=timestamp_ID,
-            language_ID=language_ID,
-            species_ID=species_ID,
+            timestamp_id=timestamp_id,
+            language_id=language_id,
+            species_id=species_id,
             number_of_pageviews=number_of_pageviews,
         )
 

@@ -11,15 +11,15 @@ class SQLAlchemyTimestampDAO(TimestampDAO):
     def __init__(self, session: Session):
         self.session = session
 
-    def get_by_id(self, timestamp_ID: int) -> Timestamp | None:
-        return self.session.get(Timestamp, timestamp_ID)
+    def get_by_id(self, timestamp_id: int) -> Timestamp | None:
+        return self.session.get(Timestamp, timestamp_id)
 
     def get_all(self):
         return self.session.query(Timestamp).all()
 
     def get_available_months(self) -> list[str]:
         query = self.session.query(
-            func.distinct(func.strftime("%Y-%m", Timestamp.time)).label("month")
+            func.distinct(func.to_char(Timestamp.time, "YYYY-MM")).label("month")
         ).order_by("month")
 
         results = query.all()

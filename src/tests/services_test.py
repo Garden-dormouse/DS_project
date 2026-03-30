@@ -23,13 +23,13 @@ class TestPageviewService(unittest.TestCase):
 
         # Add pageviews (service calls dao.create)
         service.add_pageview(
-            timestamp_ID=1, language_ID=1, species_ID=1, number_of_pageviews=100
+            timestamp_id=1, language_id=1, species_id=1, number_of_pageviews=100
         )
         service.add_pageview(
-            timestamp_ID=1, language_ID=1, species_ID=1, number_of_pageviews=50
+            timestamp_id=1, language_id=1, species_id=1, number_of_pageviews=50
         )
         service.add_pageview(
-            timestamp_ID=1, language_ID=1, species_ID=2, number_of_pageviews=75
+            timestamp_id=1, language_id=1, species_id=2, number_of_pageviews=75
         )
 
         # Mock what the DAO returns
