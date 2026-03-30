@@ -1,12 +1,12 @@
+import glob
+import json
 import os
 import pickle
-import json
-import glob
-import pandas as pd
+from urllib.request import urlretrieve
 
+import pandas as pd
 from dotenv import load_dotenv
 
-from urllib.request import urlretrieve
 from db_module.dao.language_dao import SQLAlchemyLanguageDAO
 from db_module.dao.pageview_dao import SQLAlchemyPageviewDAO
 from db_module.dao.species_dao import SQLAlchemySpeciesDAO
@@ -116,10 +116,12 @@ with SessionFactory() as session:
         ) as fileobject:
             df_species = pickle.load(fileobject)
 
-    for index, row in df_species.iterrows():
-        # Pass species type - should exist in type-specific files, fallback to 'unknown'
-        species_type = row["type"] if "type" in row.index else "unknown"
-        species_service.add_species(row["latin_name"], species_type)
+    print(f"Inserting {len(df_species)} species into the database in a single batch")
+    species_list = [
+        (row["latin_name"], row["type"] if "type" in row.index else "unknown")
+        for index, row in df_species.iterrows()
+    ]
+    species_service.add_many_species(species_list)
 
     with open(
         os.path.join(os.getcwd(), "data_wrangling", "df_time.pkl"), "rb"
@@ -152,17 +154,28 @@ with SessionFactory() as session:
         ) as fileobject:
             df_pageviews = pickle.load(fileobject)
 
-    for index, row in df_pageviews.iterrows():
-        language_ID = language_lookup.get(row["language"])  # Use lookup
-        species_ID = species_lookup.get(row["species"])  # Use lookup
-        timestamp_ID = timestamp_lookup.get(row["timestamp"])  # Use lookup
+    batch_size = 500000  # one batch could take around 45 seconds
+    batch_count = len(df_pageviews) // batch_size + (len(df_pageviews) % batch_size > 0)
+    print(f"Batch count: {batch_count}")
+    print(
+        f"Inserting {len(df_pageviews)} pageviews into the database in batches of {batch_size}"
+    )
+    for k in range(batch_count):  # for each batch
+        pageviews_list = []  # new list for each batch
 
-        pageview_service.add_pageview(
-            timestamp_ID=timestamp_ID,
-            language_ID=language_ID,
-            species_ID=species_ID,
-            number_of_pageviews=row["number_of_pageviews"],
+        for index, row in df_pageviews.iloc[
+            k * batch_size : min((k + 1) * batch_size, len(df_pageviews))
+        ].iterrows():  # go through each row in the batch
+            language_ID = language_lookup.get(row["language"])  # Use lookup
+            species_ID = species_lookup.get(row["species"])  # Use lookup
+            timestamp_ID = timestamp_lookup.get(row["timestamp"])  # Use lookup
+            pageviews_list.append(
+                (timestamp_ID, language_ID, species_ID, row["number_of_pageviews"])
+            )  # add all rows to pageviews_list
+
+        pageview_service.add_many_pageviews(
+            pageviews_list
+        )  # insert all rows in the batch into the database (in one commit)
+        print(
+            f"Inserted batch {k}: rows {k * batch_size} to {min((k + 1) * batch_size, len(df_pageviews)) - 1}"
         )
-
-        if index == 20_000:  # Limit to first 20000 rows for testing
-            break

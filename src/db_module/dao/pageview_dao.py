@@ -1,7 +1,8 @@
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from db_module.models import Pageview, Language, Species, Timestamp
+
 from db_module.dao.abstract import PageviewDAO
+from db_module.models import Language, Pageview, Species, Timestamp
 
 
 class SQLAlchemyPageviewDAO(PageviewDAO):
@@ -71,7 +72,7 @@ class SQLAlchemyPageviewDAO(PageviewDAO):
         results = query.all()
         return [(lang, total or 0) for lang, total in results]
 
-    def create(
+    def create_single(
         self,
         timestamp_ID: int,
         language_ID: int,
@@ -87,3 +88,20 @@ class SQLAlchemyPageviewDAO(PageviewDAO):
         self.session.add(pageview)
         self.session.commit()
         return pageview
+
+    def create_many(
+        self,
+        pageviews_list: list[tuple[int, int, int, int]],
+    ) -> list[Pageview]:
+        pageviews = [
+            Pageview(
+                timestamp_ID=timestamp_ID,
+                language_ID=language_ID,
+                species_ID=species_ID,
+                number_of_pageviews=number_of_pageviews,
+            )
+            for timestamp_ID, language_ID, species_ID, number_of_pageviews in pageviews_list
+        ]
+        self.session.add_all(pageviews)
+        self.session.commit()
+        return pageviews
