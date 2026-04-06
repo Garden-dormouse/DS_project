@@ -1,34 +1,23 @@
 import MiniSparkline from "./MiniSparkline.jsx";
 import "./panel.css";
 
-export default function AnalysisDrawer({
+export default function SpeciesAnalysisDrawer({
   isOpen,
   species,
-  selectedLanguages,
   selectedRangeLabel,
-  timeseries,
-  timeseriesLoading,
-  topSpeciesTimeseries,
+  aggregateTimeseries,
+  aggregateTimeseriesLoading,
+  topLanguageTimeseries,
   analysisLoading,
+  selectedLanguageCode,
   onClose,
   accentColor = "#60A5FA",
 }) {
   if (!isOpen) return null;
 
-  const languageNames = Array.isArray(selectedLanguages)
-    ? selectedLanguages.map((l) => l.name)
-    : [];
-
-  const languageLabel =
-    languageNames.length === 0
-      ? "No language selected"
-      : languageNames.length <= 4
-      ? languageNames.join(", ")
-      : `${languageNames.length} languages selected`;
-
   const analysisText = species
-    ? `${species.latin_name} is currently selected in the main panel. Below, the drawer shows the monthly pageview trends for all species currently in the Top 20 ranking, based on the selected languages and time range.`
-    : `This drawer shows the monthly pageview trends for all species currently in the Top 20 ranking, based on the selected languages and time range.`;
+    ? `${species.latin_name} is currently selected. The first chart shows the overall monthly trend aggregated across the Top 20 languages for this species. The cards below then break this down into language-specific timeseries so you can compare which languages are stable, which spike, and which stay relatively small.`
+    : `Select a species first to open the analysis drawer.`;
 
   return (
     <div
@@ -66,19 +55,18 @@ export default function AnalysisDrawer({
         >
           <div>
             <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.15 }}>
-              Top 20 Species Analysis
+              Species Language Analysis
             </div>
             <div style={{ marginTop: 8, color: "rgba(255,255,255,0.62)", fontSize: 14 }}>
-              Languages: <span className="mono">{languageLabel}</span>
+              Species: <span className="mono">{species?.latin_name || "none"}</span>
             </div>
             <div style={{ marginTop: 4, color: "rgba(255,255,255,0.62)", fontSize: 14 }}>
               Range: <span className="mono">{selectedRangeLabel || "All Months"}</span>
             </div>
-            {species?.latin_name && (
-              <div style={{ marginTop: 4, color: "rgba(255,255,255,0.62)", fontSize: 14 }}>
-                Current selection: <span className="mono">{species.latin_name}</span>
-              </div>
-            )}
+            <div style={{ marginTop: 4, color: "rgba(255,255,255,0.62)", fontSize: 14 }}>
+              Current language selection:{" "}
+              <span className="mono">{selectedLanguageCode || "overall trend"}</span>
+            </div>
           </div>
 
           <button
@@ -91,18 +79,12 @@ export default function AnalysisDrawer({
           </button>
         </div>
 
-        <div
-          className="card"
-          style={{
-            overflow: "hidden",
-            marginBottom: 16,
-          }}
-        >
+        <div className="card" style={{ marginBottom: 16 }}>
           <div className="cardHeader">
             <div>
               <div className="cardTitle">Overview</div>
               <div className="cardSubtitle">
-                Summary for the current selection
+                Summary for the current species selection
               </div>
             </div>
           </div>
@@ -110,14 +92,13 @@ export default function AnalysisDrawer({
           <div className="cardBody" style={{ lineHeight: 1.65, color: "rgba(255,255,255,0.84)" }}>
             <p style={{ marginTop: 0 }}>{analysisText}</p>
             <p>
-              Each card below represents one species from the current Top 20 list.
-              The sparkline shows how attention changed month by month across the selected
-              languages. This makes it easier to compare long-term patterns, peaks, and
-              relative stability between species.
+              The overall trend is useful when you want to understand whether the species is
+              steadily popular across languages or whether its visibility is mostly driven by a few
+              standout languages.
             </p>
             <p style={{ marginBottom: 0 }}>
-              In general, species with sharp spikes may reflect temporary attention,
-              while smoother curves suggest more stable interest over time.
+              The language-level cards below make comparison easier by showing one sparkline per
+              language in the Top 20 ranking.
             </p>
           </div>
         </div>
@@ -125,55 +106,56 @@ export default function AnalysisDrawer({
         <div className="card" style={{ marginBottom: 16 }}>
           <div className="cardHeader">
             <div>
-              <div className="cardTitle">Selected Species Timeseries</div>
+              <div className="cardTitle">Overall Timeseries</div>
               <div className="cardSubtitle">
-                Current single-species view from the main panel
+                Aggregated monthly pageviews across all Top 20 languages
               </div>
             </div>
           </div>
 
           <div className="cardBody">
-            {timeseriesLoading ? (
-              <div className="note">Loading selected species timeseries...</div>
-            ) : !timeseries || timeseries.length === 0 ? (
-              <div className="note">No selected-species timeseries data found.</div>
+            {aggregateTimeseriesLoading ? (
+              <div className="note">Loading overall timeseries...</div>
+            ) : !aggregateTimeseries || aggregateTimeseries.length === 0 ? (
+              <div className="note">No overall timeseries data found.</div>
             ) : (
               <>
                 <MiniSparkline
                   color={accentColor}
-                  points={timeseries.map((row) => ({
+                  points={aggregateTimeseries.map((row) => ({
                     label: row.month,
                     value: row.pageviews,
                   }))}
                 />
-                <div className="hint" style={{ marginTop: 10 }}>
-                  {timeseries[0]?.month} → {timeseries[timeseries.length - 1]?.month}
+                <div className="hint" style={{ marginTop: 8 }}>
+                  {aggregateTimeseries[0]?.month} →{" "}
+                  {aggregateTimeseries[aggregateTimeseries.length - 1]?.month}
                 </div>
               </>
             )}
           </div>
         </div>
 
-        <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card">
           <div className="cardHeader">
             <div>
-              <div className="cardTitle">Top 20 Species Timeseries</div>
+              <div className="cardTitle">Top 20 Language Timeseries</div>
               <div className="cardSubtitle">
-                Monthly pageviews for each top species across the selected languages
+                One chart per language for the selected species
               </div>
             </div>
           </div>
 
           <div className="cardBody">
             {analysisLoading ? (
-              <div className="note">Loading Top 20 species timeseries...</div>
-            ) : !topSpeciesTimeseries || topSpeciesTimeseries.length === 0 ? (
-              <div className="note">No timeseries data found for the current Top 20 species.</div>
+              <div className="note">Loading language timeseries...</div>
+            ) : !topLanguageTimeseries || topLanguageTimeseries.length === 0 ? (
+              <div className="note">No language timeseries data found.</div>
             ) : (
               <div style={{ display: "grid", gap: 12 }}>
-                {topSpeciesTimeseries.map((item, index) => (
+                {topLanguageTimeseries.map((item, index) => (
                   <div
-                    key={item.id ?? `${item.latin_name}-${index}`}
+                    key={`${item.code}-${index}`}
                     className="card"
                     style={{
                       marginBottom: 0,
@@ -183,10 +165,10 @@ export default function AnalysisDrawer({
                     <div className="cardHeader">
                       <div style={{ minWidth: 0 }}>
                         <div className="cardTitle">
-                          #{index + 1} {item.latin_name}
+                          #{index + 1} {item.name}
                         </div>
                         <div className="cardSubtitle">
-                          Total pageviews:{" "}
+                          code: <span className="mono">{item.code}</span> · total pageviews:{" "}
                           <span className="mono">{formatNumber(item.totalPageviews)}</span>
                         </div>
                       </div>
@@ -194,7 +176,7 @@ export default function AnalysisDrawer({
 
                     <div className="cardBody">
                       {!item.timeseries || item.timeseries.length === 0 ? (
-                        <div className="note">No timeseries data for this species.</div>
+                        <div className="note">No timeseries data for this language.</div>
                       ) : (
                         <>
                           <MiniSparkline

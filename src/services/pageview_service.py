@@ -21,8 +21,37 @@ class PageviewService:
             species_type=species_type,
         )
         return [
-            {"id": species_id, "latin_name": latin_name, "pageviews": int(total)}
-            for species_id, latin_name, total in top_species
+            {
+                "id": species_id,
+                "latin_name": latin_name,
+                "type": species_type_value,
+                "pageviews": int(total),
+            }
+            for species_id, latin_name, species_type_value, total in top_species
+        ]
+
+    def get_top_languages_for_species(
+        self,
+        species_id: int,
+        limit: int = 20,
+        start_month: str | None = None,
+        end_month: str | None = None,
+        species_type: str | None = None,
+    ):
+        rows = self.pageview_dao.get_top_languages_by_species(
+            species_id=species_id,
+            limit=limit,
+            start_month=start_month,
+            end_month=end_month,
+            species_type=species_type,
+        )
+        return [
+            {
+                "code": language_code,
+                "name": language_name,
+                "pageviews": int(total),
+            }
+            for language_code, language_name, total in rows
         ]
 
     def get_timeseries(
@@ -47,10 +76,12 @@ class PageviewService:
         self,
         month: str | None = None,
         species_type: str | None = None,
+        species_id: int | None = None,
     ) -> dict[str, int]:
         raw_results = self.pageview_dao.get_total_pageviews_by_language(
             month=month,
             species_type=species_type,
+            species_id=species_id,
         )
 
         return {lang: int(total) for lang, total in raw_results if lang}

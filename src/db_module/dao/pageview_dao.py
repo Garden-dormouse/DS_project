@@ -10,7 +10,6 @@ def _month_range(month_str: str) -> tuple[date, date]:
     """Convert YYYY-MM string to (start_date, end_date) for the month."""
     year, month_num = map(int, month_str.split("-"))
     start = date(year, month_num, 1)
-    # End of month is first day of next month (exclusive)
     if month_num == 12:
         end = date(year + 1, 1, 1)
     else:
@@ -35,11 +34,12 @@ class SQLAlchemyPageviewDAO(PageviewDAO):
         start_month: str | None = None,
         end_month: str | None = None,
         species_type: str | None = None,
-    ) -> list[tuple[int, str, int]]:
+    ) -> list[tuple[int, str, str, int]]:
         query = (
             self.session.query(
                 Species.id,
                 Species.latin_name,
+                Species.type,
                 func.sum(Pageview.number_of_pageviews).label("total_pageviews"),
             )
             .join(Pageview, Species.id == Pageview.species_id)
@@ -60,15 +60,59 @@ class SQLAlchemyPageviewDAO(PageviewDAO):
             query = query.filter(Species.type == species_type)
 
         query = (
-            query.group_by(Species.id, Species.latin_name)
+            query.group_by(Species.id, Species.latin_name, Species.type)
             .order_by(func.sum(Pageview.number_of_pageviews).desc())
             .limit(limit)
         )
 
         results = query.all()
         return [
-            (species_id, latin_name, total_pageviews or 0)
-            for species_id, latin_name, total_pageviews in results
+            (species_id, latin_name, species_type_value, total_pageviews or 0)
+            for species_id, latin_name, species_type_value, total_pageviews in results
+        ]
+
+    def get_top_languages_by_species(
+        self,
+        species_id: int,
+        limit: int = 20,
+        start_month: str | None = None,
+        end_month: str | None = None,
+        species_type: str | None = None,
+    ) -> list[tuple[str, str, int]]:
+        query = (
+            self.session.query(
+                Language.iso_639_3,
+                Language.name,
+                func.sum(Pageview.number_of_pageviews).label("total_pageviews"),
+            )
+            .join(Pageview, Language.id == Pageview.language_id)
+            .join(Species, Pageview.species_id == Species.id)
+            .join(Timestamp, Pageview.timestamp_id == Timestamp.id)
+            .filter(Species.id == species_id)
+        )
+
+        if start_month:
+            start_date, _ = _month_range(start_month)
+            query = query.filter(Timestamp.time >= start_date)
+
+        if end_month:
+            _, end_date = _month_range(end_month)
+            query = query.filter(Timestamp.time < end_date)
+
+        if species_type:
+            query = query.filter(Species.type == species_type)
+
+        query = (
+            query.group_by(Language.iso_639_3, Language.name)
+            .order_by(func.sum(Pageview.number_of_pageviews).desc())
+            .limit(limit)
+        )
+
+        results = query.all()
+        return [
+            (language_code, language_name, total_pageviews or 0)
+            for language_code, language_name, total_pageviews in results
+            if language_code
         ]
 
     def get_timeseries_by_language(
@@ -115,6 +159,7 @@ class SQLAlchemyPageviewDAO(PageviewDAO):
         self,
         month: str | None = None,
         species_type: str | None = None,
+        species_id: int | None = None,
     ) -> list[tuple[str, int]]:
         query = (
             self.session.query(
@@ -133,6 +178,9 @@ class SQLAlchemyPageviewDAO(PageviewDAO):
 
         if species_type:
             query = query.filter(Species.type == species_type)
+
+        if species_id is not None:
+            query = query.filter(Species.id == species_id)
 
         query = query.group_by(Language.iso_639_3)
 

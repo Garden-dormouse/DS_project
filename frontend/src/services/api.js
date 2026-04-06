@@ -28,6 +28,7 @@ export const api = {
 
     if (filters.month) params.append("month", filters.month);
     if (filters.speciesType) params.append("species_type", filters.speciesType);
+    if (filters.speciesId != null) params.append("species_id", filters.speciesId);
 
     const response = await fetch(`${API_BASE_URL}/languages/map-data?${params}`);
     if (!response.ok) throw new Error("Failed to fetch language map data");
@@ -59,6 +60,20 @@ export const api = {
 
     const response = await fetch(`${API_BASE_URL}/pageviews/top-species?${params}`);
     if (!response.ok) throw new Error("Failed to fetch top species");
+    return response.json();
+  },
+
+  async getTopLanguagesBySpecies(options = {}) {
+    const params = new URLSearchParams();
+
+    if (options.speciesId != null) params.append("species_id", options.speciesId);
+    if (options.limit) params.append("limit", options.limit);
+    if (options.startMonth) params.append("start_month", options.startMonth);
+    if (options.endMonth) params.append("end_month", options.endMonth);
+    if (options.speciesType) params.append("species_type", options.speciesType);
+
+    const response = await fetch(`${API_BASE_URL}/pageviews/top-languages?${params}`);
+    if (!response.ok) throw new Error("Failed to fetch top languages");
     return response.json();
   },
 
