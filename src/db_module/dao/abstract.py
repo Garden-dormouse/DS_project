@@ -231,34 +231,98 @@ class PageviewDAO(ABC):
 
     @abstractmethod
     def get_top_species_by_language(
-        self, language_code: str, limit: int = 20
-    ) -> list[tuple[Species, int]]:
+        self,
+        language_code: str,
+        limit: int = 20,
+        start_month: str | None = None,
+        end_month: str | None = None,
+        species_type: str | None = None,
+    ) -> list[tuple[int, str, str, int]]:
         """
         Retrieve top species by total pageviews for a given language.
 
         Args:
-            language_code (str): The ISO 639 code of the language to filter pageviews by.
+            language_code (str): The ISO 639-3 code of the language to filter pageviews by.
             limit (int): Maximum number of species to return.
+            start_month (str | None): Optional start month in 'YYYY-MM' format (inclusive).
+            end_month (str | None): Optional end month in 'YYYY-MM' format (exclusive).
+            species_type (str | None): Optional species type filter (e.g., 'mammal', 'bird', 'reptile').
 
         Returns:
-            list[tuple[Species, int]]: List of tuples containing the Species object and its total
-            pageviews, ordered descending by pageviews.
+            list[tuple[int, str, str, int]]: List of tuples
+                (species_id, latin_name, species_type, total_pageviews),
+                ordered descending by pageviews.
+        """
+        pass
+
+    @abstractmethod
+    def get_top_languages_by_species(
+        self,
+        species_id: int,
+        limit: int = 20,
+        start_month: str | None = None,
+        end_month: str | None = None,
+        species_type: str | None = None,
+    ) -> list[tuple[str, str, int]]:
+        """
+        Retrieve top languages by total pageviews for a given species.
+
+        Args:
+            species_id (int): The primary key of the species to filter pageviews by.
+            limit (int): Maximum number of languages to return.
+            start_month (str | None): Optional start month in 'YYYY-MM' format (inclusive).
+            end_month (str | None): Optional end month in 'YYYY-MM' format (exclusive).
+            species_type (str | None): Optional species type filter (e.g., 'mammal', 'bird', 'reptile').
+
+        Returns:
+            list[tuple[str, str, int]]: List of tuples
+                (language_code, language_name, total_pageviews),
+                ordered descending by pageviews.
+        """
+        pass
+
+    @abstractmethod
+    def get_timeseries_by_language(
+        self,
+        language_code: str,
+        species_id: int | None = None,
+        start_month: str | None = None,
+        end_month: str | None = None,
+        species_type: str | None = None,
+    ) -> list[tuple[str, int]]:
+        """
+        Retrieve monthly pageview totals for a given language.
+
+        Args:
+            language_code (str): The ISO 639-3 code of the language.
+            species_id (int | None): Optional species ID to filter by a specific species.
+            start_month (str | None): Optional start month in 'YYYY-MM' format (inclusive).
+            end_month (str | None): Optional end month in 'YYYY-MM' format (exclusive).
+            species_type (str | None): Optional species type filter (e.g., 'mammal', 'bird', 'reptile').
+
+        Returns:
+            list[tuple[str, int]]: List of tuples (month, total_pageviews),
+                where month is in 'YYYY-MM' format, ordered ascending by month.
         """
         pass
 
     @abstractmethod
     def get_total_pageviews_by_language(
-        self, month: str | None = None
-    ) -> list[tuple[Language, int]]:
+        self,
+        month: str | None = None,
+        species_type: str | None = None,
+        species_id: int | None = None,
+    ) -> list[tuple[str, int]]:
         """
-        Retrieve all languages with their total pageviews with optional filter by month.
+        Retrieve all languages with their total pageviews, with optional filters.
 
         Args:
             month (str | None): Optional month filter in 'YYYY-MM' format.
+            species_type (str | None): Optional species type filter (e.g., 'mammal', 'bird', 'reptile').
+            species_id (int | None): Optional species ID to filter by a specific species.
 
         Returns:
-            list[tuple[str, int]]: List of tuples (language_code, total_pageviews)
-            pageviews
+            list[tuple[str, int]]: List of tuples (language_code, total_pageviews).
         """
         pass
 
