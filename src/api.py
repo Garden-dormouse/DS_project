@@ -32,7 +32,18 @@ def get_species():
     with SessionFactory() as session:
         species_dao = SQLAlchemySpeciesDAO(session)
         species = species_dao.get_all()
-        return jsonify([{"id": s.ID, "latin_name": s.latin_name} for s in species])
+        return jsonify(
+            [
+                {"id": s.id, "latin_name": s.latin_name, "type": s.type}
+                for s in species
+            ]
+        )
+
+
+@app.route("/api/species/types", methods=["GET"])
+def get_species_types():
+    """Get available species types."""
+    return jsonify(["mammal", "bird", "reptile"])
 
 
 @app.route("/api/languages", methods=["GET"])
@@ -56,8 +67,8 @@ def get_languages():
         for lang in languages:
             if lang.iso_639_3 and lang.iso_639_3 not in seen:
                 seen[lang.iso_639_3] = {
-                    "code": lang.iso_639_3,  # used by frontend for API calls
-                    "name": lang.name,  # shown in dropdown/UI
+                    "code": lang.iso_639_3,
+                    "name": lang.name,
                 }
 
         return jsonify(list(seen.values()))
@@ -73,11 +84,13 @@ def get_top_species():
     - limit: Number of results (default 20)
     - start_month: YYYY-MM
     - end_month: YYYY-MM
+    - species_type: mammal | bird | reptile
     """
     language_code = request.args.get("language_code")
     limit = request.args.get("limit", default=20, type=int)
     start_month = request.args.get("start_month")
     end_month = request.args.get("end_month")
+    species_type = request.args.get("species_type")
 
     if not language_code:
         return jsonify([])
@@ -90,6 +103,77 @@ def get_top_species():
             limit=limit,
             start_month=start_month,
             end_month=end_month,
+            species_type=species_type,
+        )
+
+    return jsonify(result)
+
+
+@app.route("/api/pageviews/top-languages", methods=["GET"])
+def get_top_languages():
+    """
+    Get top languages by pageviews for a specific species and optional month range.
+
+    Query params:
+    - species_id: integer
+    - limit: Number of results (default 20)
+    - start_month: YYYY-MM
+    - end_month: YYYY-MM
+    - species_type: mammal | bird | reptile
+    """
+    species_id = request.args.get("species_id", type=int)
+    limit = request.args.get("limit", default=20, type=int)
+    start_month = request.args.get("start_month")
+    end_month = request.args.get("end_month")
+    species_type = request.args.get("species_type")
+
+    if species_id is None:
+        return jsonify([])
+
+    with SessionFactory() as session:
+        pageview_dao = SQLAlchemyPageviewDAO(session)
+        service = PageviewService(pageview_dao)
+        result = service.get_top_languages_for_species(
+            species_id=species_id,
+            limit=limit,
+            start_month=start_month,
+            end_month=end_month,
+            species_type=species_type,
+        )
+
+    return jsonify(result)
+
+
+@app.route("/api/pageviews/timeseries", methods=["GET"])
+def get_timeseries():
+    """
+    Get monthly pageviews timeseries for a specific language and optional species.
+
+    Query params:
+    - language_code: ISO 639-3
+    - species_id: optional species ID
+    - start_month: YYYY-MM
+    - end_month: YYYY-MM
+    - species_type: mammal | bird | reptile
+    """
+    language_code = request.args.get("language_code")
+    species_id = request.args.get("species_id", type=int)
+    start_month = request.args.get("start_month")
+    end_month = request.args.get("end_month")
+    species_type = request.args.get("species_type")
+
+    if not language_code:
+        return jsonify([])
+
+    with SessionFactory() as session:
+        pageview_dao = SQLAlchemyPageviewDAO(session)
+        service = PageviewService(pageview_dao)
+        result = service.get_timeseries(
+            language_code=language_code,
+            species_id=species_id,
+            start_month=start_month,
+            end_month=end_month,
+            species_type=species_type,
         )
 
     return jsonify(result)
@@ -101,14 +185,18 @@ def get_languages_map_data():
     Get all languages with their total pageviews for map visualization.
 
     Query params:
-    - month: Specific month in YYYY-MM format (optional, if not specified shows all data)
+    - month: Specific month in YYYY-MM format
+    - species_type: mammal | bird | reptile
+    - species_id: optional integer
     """
     month = request.args.get("month")
+    species_type = request.args.get("species_type")
+    species_id = request.args.get("species_id", type=int)
 
     with SessionFactory() as session:
         pageview_dao = SQLAlchemyPageviewDAO(session)
         service = PageviewService(pageview_dao)
-        result = service.get_languages_map_data(month)
+        result = service.get_languages_map_data(month, species_type, species_id)
 
     return jsonify(result)
 

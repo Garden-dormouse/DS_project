@@ -6,10 +6,10 @@ This module defines abstract base classes (ABCs) that specify the contract for d
 """
 
 import datetime
-
 from abc import ABC, abstractmethod
 from typing import Iterable
-from db_module.models import Species, Language, Timestamp, Pageview
+
+from db_module.models import Language, Pageview, Species, Timestamp
 
 
 class SpeciesDAO(ABC):
@@ -44,7 +44,7 @@ class SpeciesDAO(ABC):
         pass
 
     @abstractmethod
-    def create(self, latin_name: str, species_type: str) -> Species:
+    def create_single(self, latin_name: str, species_type: str) -> Species:
         """
         Create and persist a new Species.
 
@@ -54,6 +54,18 @@ class SpeciesDAO(ABC):
 
         Returns:
             Species: The newly created Species.
+        """
+        pass
+
+    def create_many(self, species_list: list[tuple[str, str]]) -> list[Species]:
+        """
+        Create and persist multiple Species.
+
+        Args:
+            species_list (list[tuple[str, str]]): A list of (latin_name, species_type) tuples.
+
+        Returns:
+            list[Species]: The newly created Species objects.
         """
         pass
 
@@ -251,7 +263,7 @@ class PageviewDAO(ABC):
         pass
 
     @abstractmethod
-    def create(
+    def create_single(
         self,
         timestamp_id: int,
         language_id: int,
@@ -269,5 +281,22 @@ class PageviewDAO(ABC):
 
         Returns:
             Pageview: The newly created Pageview.
+        """
+        pass
+
+    @abstractmethod
+    def create_many(
+        self,
+        pageviews_list: list[tuple[int, int, int, int]],
+    ) -> list[Pageview]:
+        """
+        Create and persist multiple Pageviews.
+
+        Args:
+            pageviews_list (list[tuple[int, int, int, int]]): List of tuples containing
+                (timestamp_ID, language_ID, species_ID, number_of_pageviews).
+
+        Returns:
+            list[Pageview]: The newly created Pageviews.
         """
         pass
