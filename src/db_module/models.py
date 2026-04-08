@@ -8,7 +8,7 @@ mappings and relationships between tables.
 
 import datetime
 
-from sqlalchemy import String, Integer, DateTime, ForeignKey
+from sqlalchemy import String, Integer, DateTime, ForeignKey, BigInteger, Date
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
 
@@ -78,3 +78,28 @@ class Pageview(Base):
     )
     language: Mapped["Language"] = relationship("Language", back_populates="pageviews")
     species: Mapped["Species"] = relationship("Species", back_populates="pageviews")
+
+
+class MonthlyLanguagePageview(Base):
+    """Read-only ORM model for the mv_monthly_language_pageviews materialized view."""
+
+    __tablename__ = "mv_monthly_language_pageviews"
+
+    language_code: Mapped[str] = mapped_column(String, primary_key=True)
+    month: Mapped[datetime.date] = mapped_column(Date, primary_key=True)
+    species_type: Mapped[str] = mapped_column(String, primary_key=True)
+    total_pageviews: Mapped[int] = mapped_column(BigInteger)
+
+
+class MonthlySpeciesPageview(Base):
+    """Read-only ORM model for the mv_monthly_species_pageviews materialized view."""
+
+    __tablename__ = "mv_monthly_species_pageviews"
+
+    species_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    latin_name: Mapped[str] = mapped_column(String)
+    species_type: Mapped[str] = mapped_column(String)
+    language_code: Mapped[str] = mapped_column(String, primary_key=True)
+    language_name: Mapped[str] = mapped_column(String)
+    month: Mapped[datetime.date] = mapped_column(Date, primary_key=True)
+    total_pageviews: Mapped[int] = mapped_column(BigInteger)
