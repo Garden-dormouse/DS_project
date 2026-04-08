@@ -157,7 +157,8 @@ class SQLAlchemyPageviewDAO(PageviewDAO):
 
     def get_total_pageviews_by_language(
         self,
-        month: str | None = None,
+        start_month: str | None = None,
+        end_month: str | None = None,
         species_type: str | None = None,
         species_id: int | None = None,
     ) -> list[tuple[str, int]]:
@@ -171,9 +172,12 @@ class SQLAlchemyPageviewDAO(PageviewDAO):
             .join(Species, Pageview.species_id == Species.id)
         )
 
-        if month:
-            start_date, end_date = _month_range(month)
+        if start_month:
+            start_date, _ = _month_range(start_month)
             query = query.filter(Timestamp.time >= start_date)
+
+        if end_month:
+            _, end_date = _month_range(end_month)
             query = query.filter(Timestamp.time < end_date)
 
         if species_type:
