@@ -269,19 +269,14 @@ export default function App() {
           return;
         }
 
-        const targetMonths = monthsInRange.length ? monthsInRange : availableMonths;
+        const result = await api.getLanguagesMapData({
+          startMonth,
+          endMonth,
+          speciesType: selectedSpeciesType,
+          speciesId: viewMode === "species" ? selectedSpeciesId : null,
+        });
 
-        const mapDataResults = await Promise.all(
-          targetMonths.map((month) =>
-            api.getLanguagesMapData({
-              month,
-              speciesType: selectedSpeciesType,
-              speciesId: viewMode === "species" ? selectedSpeciesId : null,
-            })
-          )
-        );
-
-        setMapIntensityByIso3(aggregateMapData(mapDataResults));
+        setMapIntensityByIso3(result || {});
       } catch (err) {
         console.error("Error fetching map data:", err);
         setMapIntensityByIso3({});

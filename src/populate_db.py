@@ -6,6 +6,7 @@ from urllib.request import urlretrieve
 
 import pandas as pd
 from dotenv import load_dotenv
+from sqlalchemy import text
 
 from db_module.dao.language_dao import SQLAlchemyLanguageDAO
 from db_module.dao.pageview_dao import SQLAlchemyPageviewDAO
@@ -211,3 +212,14 @@ with SessionFactory() as session:
         print(
             f"Inserted batch {k}: rows {k * batch_size} to {min((k + 1) * batch_size, len(df_pageviews)) - 1}"
         )
+
+    # Refresh materialized views after all data is loaded
+    print("Refreshing materialized views...")
+    session.execute(
+        text("REFRESH MATERIALIZED VIEW mv_monthly_language_pageviews")
+    )
+    session.execute(
+        text("REFRESH MATERIALIZED VIEW mv_monthly_species_pageviews")
+    )
+    session.commit()
+    print("Materialized views refreshed.")

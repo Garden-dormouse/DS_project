@@ -26,7 +26,8 @@ export const api = {
   async getLanguagesMapData(filters = {}) {
     const params = new URLSearchParams();
 
-    if (filters.month) params.append("month", filters.month);
+    if (filters.startMonth) params.append("start_month", filters.startMonth);
+    if (filters.endMonth) params.append("end_month", filters.endMonth);
     if (filters.speciesType) params.append("species_type", filters.speciesType);
     if (filters.speciesId != null) params.append("species_id", filters.speciesId);
 

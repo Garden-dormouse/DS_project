@@ -102,7 +102,7 @@ class TestPageviewService(unittest.TestCase):
         self.assertEqual(result["eng"], 300)  # Language code with pageviews
         self.assertEqual(result["fin"], 50)  # Language code with pageviews
         mock_dao.get_total_pageviews_by_language.assert_called_once_with(
-            month=None, species_type=None
+            start_month=None, end_month=None, species_type=None, species_id=None
         )
 
     def test_get_languages_map_data_with_filters(self):
@@ -112,11 +112,11 @@ class TestPageviewService(unittest.TestCase):
 
         mock_dao.get_total_pageviews_by_language.return_value = [("eng", 150)]
 
-        result = service.get_languages_map_data(month="2026-01", species_type="mammal")
+        result = service.get_languages_map_data(start_month="2026-01", end_month="2026-01", species_type="mammal")
 
         self.assertEqual(result["eng"], 150)
         mock_dao.get_total_pageviews_by_language.assert_called_once_with(
-            month="2026-01", species_type="mammal"
+            start_month="2026-01", end_month="2026-01", species_type="mammal", species_id=None
         )
 
     def test_get_timeseries(self):

@@ -185,18 +185,20 @@ def get_languages_map_data():
     Get all languages with their total pageviews for map visualization.
 
     Query params:
-    - month: Specific month in YYYY-MM format
+    - start_month: Start month in YYYY-MM format (inclusive)
+    - end_month: End month in YYYY-MM format (inclusive)
     - species_type: mammal | bird | reptile
     - species_id: optional integer
     """
-    month = request.args.get("month")
+    start_month = request.args.get("start_month")
+    end_month = request.args.get("end_month")
     species_type = request.args.get("species_type")
     species_id = request.args.get("species_id", type=int)
 
     with SessionFactory() as session:
         pageview_dao = SQLAlchemyPageviewDAO(session)
         service = PageviewService(pageview_dao)
-        result = service.get_languages_map_data(month, species_type, species_id)
+        result = service.get_languages_map_data(start_month, end_month, species_type, species_id)
 
     return jsonify(result)
 
