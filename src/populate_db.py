@@ -112,6 +112,11 @@ with SessionFactory() as session:
     df_languages["language_range"] = df_languages["glottocode"].apply(
         get_language_range
     )
+    # If no individual language range found, try macrolanguage range
+    df_languages.loc[df_languages["language_range"].isna(), "language_range"] = \
+        df_languages.loc[df_languages["language_range"].isna(), "macro_glottocode"].apply(
+            get_language_range
+        )
 
     for index, row in df_languages.iterrows():
         language_service.add_language(
