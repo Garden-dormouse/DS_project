@@ -309,7 +309,8 @@ class PageviewDAO(ABC):
     @abstractmethod
     def get_total_pageviews_by_language(
         self,
-        month: str | None = None,
+        start_month: str | None = None,
+        end_month: str | None = None,
         species_type: str | None = None,
         species_id: int | None = None,
     ) -> list[tuple[str, int]]:
@@ -317,7 +318,8 @@ class PageviewDAO(ABC):
         Retrieve all languages with their total pageviews, with optional filters.
 
         Args:
-            month (str | None): Optional month filter in 'YYYY-MM' format.
+            start_month (str | None): Optional start month in 'YYYY-MM' format (inclusive).
+            end_month (str | None): Optional end month in 'YYYY-MM' format (inclusive).
             species_type (str | None): Optional species type filter (e.g., 'mammal', 'bird', 'reptile').
             species_id (int | None): Optional species ID to filter by a specific species.
 

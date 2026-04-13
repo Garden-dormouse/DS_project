@@ -74,12 +74,14 @@ class PageviewService:
 
     def get_languages_map_data(
         self,
-        month: str | None = None,
+        start_month: str | None = None,
+        end_month: str | None = None,
         species_type: str | None = None,
         species_id: int | None = None,
     ) -> dict[str, int]:
         raw_results = self.pageview_dao.get_total_pageviews_by_language(
-            month=month,
+            start_month=start_month,
+            end_month=end_month,
             species_type=species_type,
             species_id=species_id,
         )
