@@ -5,8 +5,18 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 export const api = {
-  async getSpecies() {
-    const response = await fetch(`${API_BASE_URL}/species`);
+  async getSpecies(options = {}) {
+    const params = new URLSearchParams();
+
+    if (options.query) params.append("q", options.query);
+    if (options.speciesType) params.append("species_type", options.speciesType);
+    if (options.limit) params.append("limit", options.limit);
+    if (options.offset != null) params.append("offset", options.offset);
+
+    const queryString = params.toString();
+    const response = await fetch(
+      `${API_BASE_URL}/species${queryString ? `?${queryString}` : ""}`
+    );
     if (!response.ok) throw new Error("Failed to fetch species");
     return response.json();
   },

@@ -151,7 +151,6 @@ export default function App() {
   const [endMonth, setEndMonth] = useState(null);
 
   const [languages, setLanguages] = useState([]);
-  const [speciesList, setSpeciesList] = useState([]);
   const [speciesTypes, setSpeciesTypes] = useState([]);
   const [availableMonths, setAvailableMonths] = useState([]);
 
@@ -162,6 +161,7 @@ export default function App() {
   const [topSpecies, setTopSpecies] = useState([]);
 
   const [selectedSpecies, setSelectedSpecies] = useState(null);
+  const [selectedSpeciesOption, setSelectedSpeciesOption] = useState(null);
   const [timeseries, setTimeseries] = useState([]);
   const [timeseriesLoading, setTimeseriesLoading] = useState(false);
 
@@ -189,23 +189,19 @@ export default function App() {
       try {
         setLoading(true);
 
-        const [languagesData, speciesData, monthsData, speciesTypesData] =
-          await Promise.all([
-            api.getLanguages(),
-            api.getSpecies(),
-            api.getMonths(),
-            api.getSpeciesTypes(),
-          ]);
+        const [languagesData, monthsData, speciesTypesData] = await Promise.all([
+          api.getLanguages(),
+          api.getMonths(),
+          api.getSpeciesTypes(),
+        ]);
 
         const safeLanguages = Array.isArray(languagesData) ? languagesData : [];
-        const safeSpecies = Array.isArray(speciesData) ? speciesData : [];
         const safeMonths = sortMonths(Array.isArray(monthsData) ? monthsData : []);
         const safeSpeciesTypes = Array.isArray(speciesTypesData)
           ? speciesTypesData
           : [];
 
         setLanguages(safeLanguages);
-        setSpeciesList(safeSpecies);
         setAvailableMonths(safeMonths);
         setSpeciesTypes(safeSpeciesTypes);
 
@@ -245,9 +241,7 @@ export default function App() {
     return `${selectedLanguageObjects.length} languages selected`;
   }, [selectedLanguageObjects]);
 
-  const selectedSpeciesObject = useMemo(() => {
-    return speciesList.find((s) => s.id === selectedSpeciesId) || null;
-  }, [speciesList, selectedSpeciesId]);
+  const selectedSpeciesObject = selectedSpeciesOption;
 
   const activeTypeColor = useMemo(() => {
     if (viewMode === "species") {
@@ -255,6 +249,18 @@ export default function App() {
     }
     return getTypeColor(selectedSpeciesType);
   }, [viewMode, selectedSpeciesObject, selectedSpeciesType]);
+
+  useEffect(() => {
+    if (
+      selectedSpeciesOption &&
+      selectedSpeciesType &&
+      selectedSpeciesOption.type !== selectedSpeciesType
+    ) {
+      setSelectedSpeciesId(null);
+      setSelectedSpeciesOption(null);
+      setSelectedLanguageForSpeciesView(null);
+    }
+  }, [selectedSpeciesOption, selectedSpeciesType]);
 
   useEffect(() => {
     async function fetchMapData() {
@@ -731,6 +737,12 @@ export default function App() {
     setEndMonth(availableMonths[availableMonths.length - 1]);
   };
 
+  const handleSelectSpeciesOption = (species) => {
+    setSelectedSpeciesOption(species || null);
+    setSelectedSpeciesId(species?.id ?? null);
+    setSelectedLanguageForSpeciesView(null);
+  };
+
   const handleOpenAnalysis = (species) => {
     setAnalysisSpecies(species || selectedSpecies || null);
     setIsAnalysisOpen(true);
@@ -849,9 +861,8 @@ export default function App() {
               />
             ) : (
               <SpeciesFiltersPanel
-                speciesList={speciesList}
-                selectedSpeciesId={selectedSpeciesId}
-                onSelectSpeciesId={setSelectedSpeciesId}
+                selectedSpecies={selectedSpeciesObject}
+                onSelectSpecies={handleSelectSpeciesOption}
                 speciesTypes={speciesTypes}
                 selectedSpeciesType={selectedSpeciesType}
                 onSelectSpeciesType={setSelectedSpeciesType}
