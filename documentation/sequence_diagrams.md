@@ -9,10 +9,10 @@ sequenceDiagram
   participant DAO as PageviewDAO
   participant DB as PostgreSQL
 
-  User->>Frontend: Select month (2026-01)
-  Frontend->>API: GET /api/languages/map-data?month=2026-01
-  API->>Service: get_languages_map_data(month="2026-01")
-  Service->>DAO: get_total_pageviews_by_language(month="2026-01")
+  User->>Frontend: Select date range & species filter
+  Frontend->>API: GET /api/languages/map-data?start_month=2025-12&end_month=2026-01&species_type=mammal
+  API->>Service: get_languages_map_data(start_month="2025-12", end_month="2026-01", species_type="mammal")
+  Service->>DAO: get_total_pageviews_by_language(start_month="2025-12", end_month="2026-01", species_type="mammal")
   DAO->>DB: Query pageviews JOIN languages<br/>WHERE timestamps.time BETWEEN start AND end
   DB-->>DAO: List[(iso_639_3, total_pageviews)]
   DAO-->>Service: [(eng, 300), (fin, 50)]

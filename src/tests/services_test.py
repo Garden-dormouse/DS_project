@@ -32,10 +32,10 @@ class TestPageviewService(unittest.TestCase):
             timestamp_id=1, language_id=1, species_id=2, number_of_pageviews=75
         )
 
-        # Mock what the DAO returns
+        # Mock what the DAO returns (species_id, latin_name, species_type, total_pageviews)
         mock_dao.get_top_species_by_language.return_value = [
-            (1, "Panthera leo", 150),
-            (2, "Canis lupus", 75),
+            (1, "Panthera leo", "mammal", 150),
+            (2, "Canis lupus", "mammal", 75),
         ]
 
         result = service.get_top_species_for_language("en", limit=2)
@@ -65,7 +65,7 @@ class TestPageviewService(unittest.TestCase):
         service = PageviewService(mock_dao)
 
         mock_dao.get_top_species_by_language.return_value = [
-            (1, "Panthera leo", 500),
+            (1, "Panthera leo", "mammal", 500),
         ]
 
         result = service.get_top_species_for_language(
@@ -112,11 +112,16 @@ class TestPageviewService(unittest.TestCase):
 
         mock_dao.get_total_pageviews_by_language.return_value = [("eng", 150)]
 
-        result = service.get_languages_map_data(start_month="2026-01", end_month="2026-01", species_type="mammal")
+        result = service.get_languages_map_data(
+            start_month="2026-01", end_month="2026-01", species_type="mammal"
+        )
 
         self.assertEqual(result["eng"], 150)
         mock_dao.get_total_pageviews_by_language.assert_called_once_with(
-            start_month="2026-01", end_month="2026-01", species_type="mammal", species_id=None
+            start_month="2026-01",
+            end_month="2026-01",
+            species_type="mammal",
+            species_id=None,
         )
 
     def test_get_timeseries(self):

@@ -14,6 +14,8 @@ graph TB
     MIG["migrate.py"]
     subgraph Migrations["migrations/"]
       M1["001_initial.sql"]
+      M2["002_add_indexes.sql"]
+      M3["003_materialized_views.sql"]
     end
   end
   

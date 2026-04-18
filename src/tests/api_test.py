@@ -27,6 +27,7 @@ class TestAPIEndpoints(unittest.TestCase):
                 mock_species = Mock()
                 mock_species.id = 1
                 mock_species.latin_name = "Panthera leo"
+                mock_species.type = "mammal"
                 mock_dao.return_value.get_all.return_value = [mock_species]
 
                 response = self.client.get("/api/species")
@@ -155,7 +156,9 @@ class TestAPIEndpoints(unittest.TestCase):
         }
 
         with patch("api.PageviewService", return_value=mock_pageview_service):
-            response = self.client.get("/api/languages/map-data?start_month=2026-01&end_month=2026-01")
+            response = self.client.get(
+                "/api/languages/map-data?start_month=2026-01&end_month=2026-01"
+            )
 
             self.assertEqual(response.status_code, 200)
             data = response.get_json()
