@@ -13,6 +13,7 @@ from db_module.dao.language_dao import SQLAlchemyLanguageDAO
 from db_module.dao.pageview_dao import SQLAlchemyPageviewDAO
 from db_module.dao.timestamp_dao import SQLAlchemyTimestampDAO
 from services.pageview_service import PageviewService
+from services.species_service import SpeciesService
 from services.timestamp_service import TimestampService
 from services.language_service import LanguageService
 
@@ -28,15 +29,24 @@ SessionFactory = get_session_factory(engine)
 
 @app.route("/api/species", methods=["GET"])
 def get_species():
-    """Get all species."""
+    """Get paginated species results for search and selection."""
+    query = request.args.get("q")
+    species_type = request.args.get("species_type")
+    requested_limit = request.args.get("limit", default=50, type=int)
+    requested_offset = request.args.get("offset", default=0, type=int)
+    limit = max(1, min(requested_limit or 50, 100))
+    offset = max(requested_offset or 0, 0)
+
     with SessionFactory() as session:
         species_dao = SQLAlchemySpeciesDAO(session)
-        species = species_dao.get_all()
+        service = SpeciesService(species_dao)
         return jsonify(
-            [
-                {"id": s.id, "latin_name": s.latin_name, "type": s.type}
-                for s in species
-            ]
+            service.search_species(
+                query=query,
+                species_type=species_type,
+                limit=limit,
+                offset=offset,
+            )
         )
 
 
