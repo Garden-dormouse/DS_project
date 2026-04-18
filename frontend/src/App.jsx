@@ -9,7 +9,20 @@ import SpeciesFiltersPanel from "./components/SpeciesFiltersPanel.jsx";
 import SpeciesLanguagePanel from "./components/SpeciesLanguagePanel.jsx";
 import SpeciesAnalysisDrawer from "./components/SpeciesAnalysisDrawer.jsx";
 
-import { api } from "./services/api.js";
+import {
+  useLanguages,
+  useSpecies,
+  useAvailableMonths,
+  useSpeciesTypes,
+  useLanguageRange,
+  useLanguagesMapData,
+  useTopSpeciesByLanguage,
+  useTopLanguagesBySpecies,
+  useTimeseries,
+  useTopSpeciesByLanguageBatch,
+  useLanguageRangeBatch,
+  useTimeseriesBatch,
+} from "./hooks/useApi.js";
 
 const TYPE_COLORS = {
   mammal: "#60A5FA",
@@ -134,6 +147,12 @@ function mergeTimeseriesResults(results, months) {
 }
 
 export default function App() {
+  // React Query hooks - handle caching automatically
+  const { data: languages = [] } = useLanguages();
+  const { data: speciesList = [] } = useSpecies();
+  const { data: availableMonths = [] } = useAvailableMonths();
+  const { data: speciesTypes = [] } = useSpeciesTypes();
+
   const [viewMode, setViewMode] = useState("language");
 
   const [selectedIso3, setSelectedIso3] = useState(null);
@@ -145,15 +164,9 @@ export default function App() {
 
   const [languageRange, setLanguageRange] = useState(null);
   const [speciesModeLanguageRange, setSpeciesModeLanguageRange] = useState(null);
-  const [languageRangeCache, setLanguageRangeCache] = useState({});
 
   const [startMonth, setStartMonth] = useState(null);
   const [endMonth, setEndMonth] = useState(null);
-
-  const [languages, setLanguages] = useState([]);
-  const [speciesList, setSpeciesList] = useState([]);
-  const [speciesTypes, setSpeciesTypes] = useState([]);
-  const [availableMonths, setAvailableMonths] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -185,44 +198,13 @@ export default function App() {
     useState(false);
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true);
-
-        const [languagesData, speciesData, monthsData, speciesTypesData] =
-          await Promise.all([
-            api.getLanguages(),
-            api.getSpecies(),
-            api.getMonths(),
-            api.getSpeciesTypes(),
-          ]);
-
-        const safeLanguages = Array.isArray(languagesData) ? languagesData : [];
-        const safeSpecies = Array.isArray(speciesData) ? speciesData : [];
-        const safeMonths = sortMonths(Array.isArray(monthsData) ? monthsData : []);
-        const safeSpeciesTypes = Array.isArray(speciesTypesData)
-          ? speciesTypesData
-          : [];
-
-        setLanguages(safeLanguages);
-        setSpeciesList(safeSpecies);
-        setAvailableMonths(safeMonths);
-        setSpeciesTypes(safeSpeciesTypes);
-
-        if (safeMonths.length > 0) {
-          setStartMonth(safeMonths[0]);
-          setEndMonth(safeMonths[safeMonths.length - 1]);
-        }
-      } catch (err) {
-        setError(err.message || "Failed to load initial data");
-        console.error("Error loading data:", err);
-      } finally {
-        setLoading(false);
-      }
+    if (availableMonths.length > 0 && !startMonth && !endMonth) {
+      const sorted = sortMonths(availableMonths);
+      setStartMonth(sorted[0]);
+      setEndMonth(sorted[sorted.length - 1]);
+      setLoading(false);
     }
-
-    loadData();
-  }, []);
+  }, [availableMonths, startMonth, endMonth]);
 
   const monthsInRange = useMemo(() => {
     return getMonthRange(availableMonths, startMonth, endMonth);
@@ -256,44 +238,42 @@ export default function App() {
     return getTypeColor(selectedSpeciesType);
   }, [viewMode, selectedSpeciesObject, selectedSpeciesType]);
 
+  // Use React Query hook for map data (automatically cached)
+  const mapFilters = useMemo(() => {
+    if (!startMonth || !endMonth || !availableMonths.length) return null;
+    if (viewMode === "species" && selectedSpeciesId == null) return null;
+
+    return {
+      startMonth,
+      endMonth,
+      speciesType: selectedSpeciesType,
+      speciesId: viewMode === "species" ? selectedSpeciesId : null,
+    };
+  }, [startMonth, endMonth, availableMonths, selectedSpeciesType, viewMode, selectedSpeciesId]);
+
+  const { data: mapData } = useLanguagesMapData(mapFilters);
+
   useEffect(() => {
-    async function fetchMapData() {
-      try {
-        if (!startMonth || !endMonth || !availableMonths.length) {
-          setMapIntensityByIso3({});
-          return;
-        }
+    setMapIntensityByIso3(mapData || {});
+  }, [mapData]);
 
-        if (viewMode === "species" && selectedSpeciesId == null) {
-          setMapIntensityByIso3({});
-          return;
-        }
-
-        const result = await api.getLanguagesMapData({
-          startMonth,
-          endMonth,
-          speciesType: selectedSpeciesType,
-          speciesId: viewMode === "species" ? selectedSpeciesId : null,
-        });
-
-        setMapIntensityByIso3(result || {});
-      } catch (err) {
-        console.error("Error fetching map data:", err);
-        setMapIntensityByIso3({});
-      }
+  // Batch fetch top species for all selected languages (cached per language)
+  const topSpeciesQueries = useTopSpeciesByLanguageBatch(
+    viewMode === "language" && selectedLanguages.length > 0 ? selectedLanguages : [],
+    {
+      limit: 100,
+      startMonth,
+      endMonth,
+      speciesType: selectedSpeciesType,
     }
+  );
 
-    fetchMapData();
-  }, [
-    availableMonths,
-    monthsInRange,
-    selectedSpeciesType,
-    startMonth,
-    endMonth,
-    viewMode,
-    selectedSpeciesId,
-  ]);
+  // Batch fetch language ranges for all selected languages (cached per language)
+  const languageRangeQueries = useLanguageRangeBatch(
+    viewMode === "language" && selectedLanguages.length > 0 ? selectedLanguages : []
+  );
 
+  // Update state when queries complete
   useEffect(() => {
     if (viewMode !== "language") {
       setTopSpecies([]);
@@ -311,71 +291,47 @@ export default function App() {
       return;
     }
 
-    async function fetchLanguageData() {
-      try {
-        const topSpeciesResponses = await Promise.all(
-          selectedLanguages.map((languageCode) =>
-            api.getTopSpeciesByLanguage(languageCode, {
-              limit: 100,
-              startMonth,
-              endMonth,
-              speciesType: selectedSpeciesType,
-            })
-          )
-        );
+    // Check if all queries are done
+    const allLoaded = topSpeciesQueries.every((q) => !q.isPending) &&
+                      languageRangeQueries.every((q) => !q.isPending);
 
-        const missingRangeCodes = selectedLanguages.filter(
-          (code) => !languageRangeCache[code]
-        );
+    if (!allLoaded) return;
 
-        let fetchedRangeEntries = [];
-        if (missingRangeCodes.length > 0) {
-          fetchedRangeEntries = await Promise.all(
-            missingRangeCodes.map(async (code) => {
-              const range = await api.getLanguageRange(code);
-              return [code, range];
-            })
-          );
+    try {
+      // Extract data from queries (each individually cached)
+      const topSpeciesResponses = topSpeciesQueries.map((q) => q.data || []);
+      const languageRanges = languageRangeQueries.map((q) => q.data);
 
-          setLanguageRangeCache((prev) => {
-            const next = { ...prev };
-            for (const [code, range] of fetchedRangeEntries) {
-              next[code] = range;
-            }
-            return next;
-          });
-        }
-
-        const mergedCache = { ...languageRangeCache };
-        for (const [code, range] of fetchedRangeEntries) {
-          mergedCache[code] = range;
-        }
-
-        const selectedRanges = selectedLanguages
-          .map((code) => mergedCache[code])
-          .filter(Boolean);
-
-        setTopSpecies(mergeTopSpeciesResults(topSpeciesResponses, 20));
-        setLanguageRange(mergeLanguageRanges(selectedRanges));
-        setSelectedIso3(null);
-        setSelectedSpecies(null);
-      } catch (err) {
-        console.error("Error fetching language data:", err);
-        setTopSpecies([]);
-        setLanguageRange(null);
-        setSelectedSpecies(null);
-      }
+      setTopSpecies(mergeTopSpeciesResults(topSpeciesResponses, 20));
+      setLanguageRange(mergeLanguageRanges(languageRanges));
+      setSelectedIso3(null);
+      setSelectedSpecies(null);
+    } catch (err) {
+      console.error("Error processing language data:", err);
+      setTopSpecies([]);
+      setLanguageRange(null);
+      setSelectedSpecies(null);
     }
-
-    fetchLanguageData();
   }, [
     viewMode,
     selectedLanguages,
     startMonth,
     endMonth,
     selectedSpeciesType,
-    languageRangeCache,
+    topSpeciesQueries,
+    languageRangeQueries,
   ]);
+
+  // Batch fetch timeseries for all selected languages (cached per language)
+  const timeseriesQueries = useTimeseriesBatch(
+    {
+      speciesId: selectedSpecies?.id,
+      startMonth,
+      endMonth,
+      speciesType: selectedSpeciesType,
+    },
+    viewMode === "language" && selectedLanguages.length > 0 ? selectedLanguages : []
+  );
 
   useEffect(() => {
     if (viewMode !== "language") {
@@ -388,32 +344,22 @@ export default function App() {
       return;
     }
 
-    async function fetchTimeseries() {
-      try {
-        setTimeseriesLoading(true);
-
-        const responses = await Promise.all(
-          selectedLanguages.map((languageCode) =>
-            api.getTimeseries({
-              languageCode,
-              speciesId: selectedSpecies?.id,
-              startMonth,
-              endMonth,
-              speciesType: selectedSpeciesType,
-            })
-          )
-        );
-
-        setTimeseries(mergeTimeseriesResults(responses, monthsInRange));
-      } catch (err) {
-        console.error("Error fetching timeseries:", err);
-        setTimeseries([]);
-      } finally {
-        setTimeseriesLoading(false);
-      }
+    // Check if all queries are done
+    const allLoaded = timeseriesQueries.every((q) => !q.isPending);
+    if (!allLoaded) {
+      setTimeseriesLoading(true);
+      return;
     }
 
-    fetchTimeseries();
+    try {
+      const responses = timeseriesQueries.map((q) => q.data || []);
+      setTimeseries(mergeTimeseriesResults(responses, monthsInRange));
+      setTimeseriesLoading(false);
+    } catch (err) {
+      console.error("Error processing timeseries:", err);
+      setTimeseries([]);
+      setTimeseriesLoading(false);
+    }
   }, [
     viewMode,
     selectedLanguages,
@@ -422,6 +368,7 @@ export default function App() {
     endMonth,
     selectedSpeciesType,
     monthsInRange,
+    timeseriesQueries,
   ]);
 
   useEffect(() => {
@@ -529,6 +476,13 @@ export default function App() {
     selectedSpeciesType,
   ]);
 
+  // Batch fetch language ranges for species mode (cached per language)
+  const speciesModeRangeQueries = useLanguageRangeBatch(
+    viewMode === "species" && topLanguages.length > 0
+      ? topLanguages.map((row) => row.code).filter(Boolean)
+      : []
+  );
+
   useEffect(() => {
     if (viewMode !== "species") {
       setSpeciesModeLanguageRange(null);
@@ -540,45 +494,46 @@ export default function App() {
       return;
     }
 
-    async function fetchSpeciesModeRanges() {
-      try {
-        const codes = topLanguages.map((row) => row.code).filter(Boolean);
+    // Check if all queries are done
+    const allLoaded = speciesModeRangeQueries.every((q) => !q.isPending);
+    if (!allLoaded) return;
 
-        const missingCodes = codes.filter((code) => !languageRangeCache[code]);
-
-        let fetchedRangeEntries = [];
-        if (missingCodes.length > 0) {
-          fetchedRangeEntries = await Promise.all(
-            missingCodes.map(async (code) => {
-              const range = await api.getLanguageRange(code);
-              return [code, range];
-            })
-          );
-
-          setLanguageRangeCache((prev) => {
-            const next = { ...prev };
-            for (const [code, range] of fetchedRangeEntries) {
-              next[code] = range;
-            }
-            return next;
-          });
-        }
-
-        const mergedCache = { ...languageRangeCache };
-        for (const [code, range] of fetchedRangeEntries) {
-          mergedCache[code] = range;
-        }
-
-        const selectedRanges = codes.map((code) => mergedCache[code]).filter(Boolean);
-        setSpeciesModeLanguageRange(mergeLanguageRanges(selectedRanges));
-      } catch (err) {
-        console.error("Error fetching species-mode language ranges:", err);
-        setSpeciesModeLanguageRange(null);
-      }
+    try {
+      const languageRanges = speciesModeRangeQueries.map((q) => q.data);
+      setSpeciesModeLanguageRange(mergeLanguageRanges(languageRanges));
+    } catch (err) {
+      console.error("Error processing species-mode language ranges:", err);
+      setSpeciesModeLanguageRange(null);
     }
+  }, [viewMode, topLanguages, speciesModeRangeQueries]);
 
-    fetchSpeciesModeRanges();
-  }, [viewMode, topLanguages, languageRangeCache]);
+  // Batch fetch timeseries for species view (all top languages)
+  const speciesLanguageTimeseriesQueries = useTimeseriesBatch(
+    {
+      speciesId: selectedSpeciesId,
+      startMonth,
+      endMonth,
+      speciesType: selectedSpeciesType,
+    },
+    viewMode === "species" &&
+      !selectedLanguageForSpeciesView &&
+      topLanguages.length > 0
+      ? topLanguages.map((row) => row.code).filter(Boolean)
+      : []
+  );
+
+  // Single timeseries for selected language in species view
+  const selectedSpeciesLanguageTimeseries = useTimeseries(
+    viewMode === "species" && selectedLanguageForSpeciesView
+      ? {
+          languageCode: selectedLanguageForSpeciesView,
+          speciesId: selectedSpeciesId,
+          startMonth,
+          endMonth,
+          speciesType: selectedSpeciesType,
+        }
+      : null
+  );
 
   useEffect(() => {
     if (viewMode !== "species") {
@@ -591,48 +546,44 @@ export default function App() {
       return;
     }
 
-    async function fetchSpeciesLanguageTimeseries() {
-      try {
+    if (!selectedLanguageForSpeciesView) {
+      // Multiple languages - use batch queries
+      const allLoaded = speciesLanguageTimeseriesQueries.every((q) => !q.isPending);
+      if (!allLoaded) {
         setSpeciesLanguageTimeseriesLoading(true);
+        return;
+      }
 
-        if (!selectedLanguageForSpeciesView) {
-          const responses = await Promise.all(
-            topLanguages.map((row) =>
-              api.getTimeseries({
-                languageCode: row.code,
-                speciesId: selectedSpeciesId,
-                startMonth,
-                endMonth,
-                speciesType: selectedSpeciesType,
-              })
-            )
-          );
-
-          setSpeciesLanguageTimeseries(
-            mergeTimeseriesResults(responses, monthsInRange)
-          );
-        } else {
-          const rows = await api.getTimeseries({
-            languageCode: selectedLanguageForSpeciesView,
-            speciesId: selectedSpeciesId,
-            startMonth,
-            endMonth,
-            speciesType: selectedSpeciesType,
-          });
-
-          setSpeciesLanguageTimeseries(
-            mergeTimeseriesResults([rows], monthsInRange)
-          );
-        }
+      try {
+        const responses = speciesLanguageTimeseriesQueries.map((q) => q.data || []);
+        setSpeciesLanguageTimeseries(
+          mergeTimeseriesResults(responses, monthsInRange)
+        );
+        setSpeciesLanguageTimeseriesLoading(false);
       } catch (err) {
-        console.error("Error fetching species-language timeseries:", err);
+        console.error("Error processing species-language timeseries:", err);
         setSpeciesLanguageTimeseries([]);
-      } finally {
+        setSpeciesLanguageTimeseriesLoading(false);
+      }
+    } else {
+      // Single language - use single query
+      if (selectedSpeciesLanguageTimeseries.isPending) {
+        setSpeciesLanguageTimeseriesLoading(true);
+        return;
+      }
+
+      try {
+        const rows = selectedSpeciesLanguageTimeseries.data || [];
+        setSpeciesLanguageTimeseries(
+          mergeTimeseriesResults([rows], monthsInRange)
+        );
+        setSpeciesLanguageTimeseriesLoading(false);
+      } catch (err) {
+        console.error("Error processing selected species-language timeseries:", err);
+        setSpeciesLanguageTimeseries([]);
         setSpeciesLanguageTimeseriesLoading(false);
       }
     }
-
-    fetchSpeciesLanguageTimeseries();
   }, [
     viewMode,
     selectedSpeciesId,
@@ -642,6 +593,8 @@ export default function App() {
     selectedSpeciesType,
     monthsInRange,
     topLanguages,
+    speciesLanguageTimeseriesQueries,
+    selectedSpeciesLanguageTimeseries,
   ]);
 
   useEffect(() => {
@@ -657,54 +610,55 @@ export default function App() {
       return;
     }
 
-    async function fetchSpeciesAnalysisData() {
-      try {
-        setSpeciesAggregateTimeseriesLoading(true);
-        setTopLanguageTimeseriesLoading(true);
-
-        const allResponses = await Promise.all(
-          topLanguages.map((row) =>
-            api.getTimeseries({
-              languageCode: row.code,
-              speciesId: selectedSpeciesId,
-              startMonth,
-              endMonth,
-              speciesType: selectedSpeciesType,
-            })
-          )
-        );
-
-        setSpeciesAggregateTimeseries(
-          mergeTimeseriesResults(allResponses, monthsInRange)
-        );
-
-        const languageResults = topLanguages.map((row, idx) => ({
-          code: row.code,
-          name: row.name,
-          totalPageviews: row.pageviews,
-          timeseries: mergeTimeseriesResults([allResponses[idx]], monthsInRange),
-        }));
-
-        setTopLanguageTimeseries(languageResults);
-      } catch (err) {
-        console.error("Error fetching species analysis data:", err);
-        setSpeciesAggregateTimeseries([]);
-        setTopLanguageTimeseries([]);
-      } finally {
-        setSpeciesAggregateTimeseriesLoading(false);
-        setTopLanguageTimeseriesLoading(false);
-      }
+    if (selectedLanguageForSpeciesView) {
+      // If a specific language is selected, skip the aggregate
+      setSpeciesAggregateTimeseries([]);
+      setTopLanguageTimeseries([]);
+      return;
     }
 
-    fetchSpeciesAnalysisData();
+    // Use the batch queries for all languages (reuse from speciesLanguageTimeseriesQueries)
+    const allLoaded = speciesLanguageTimeseriesQueries.every((q) => !q.isPending);
+    if (!allLoaded) {
+      setSpeciesAggregateTimeseriesLoading(true);
+      setTopLanguageTimeseriesLoading(true);
+      return;
+    }
+
+    try {
+      const allResponses = speciesLanguageTimeseriesQueries.map((q) => q.data || []);
+
+      setSpeciesAggregateTimeseries(
+        mergeTimeseriesResults(allResponses, monthsInRange)
+      );
+
+      const languageResults = topLanguages.map((row, idx) => ({
+        code: row.code,
+        name: row.name,
+        totalPageviews: row.pageviews,
+        timeseries: mergeTimeseriesResults([allResponses[idx]], monthsInRange),
+      }));
+
+      setTopLanguageTimeseries(languageResults);
+      setSpeciesAggregateTimeseriesLoading(false);
+      setTopLanguageTimeseriesLoading(false);
+    } catch (err) {
+      console.error("Error processing species analysis data:", err);
+      setSpeciesAggregateTimeseries([]);
+      setTopLanguageTimeseries([]);
+      setSpeciesAggregateTimeseriesLoading(false);
+      setTopLanguageTimeseriesLoading(false);
+    }
   }, [
     viewMode,
     selectedSpeciesId,
+    selectedLanguageForSpeciesView,
     startMonth,
     endMonth,
     selectedSpeciesType,
     monthsInRange,
     topLanguages,
+    speciesLanguageTimeseriesQueries,
   ]);
 
   const handleCountryClick = (iso3) => {
