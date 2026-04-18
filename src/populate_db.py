@@ -53,6 +53,46 @@ def normalize_timestamp_key(value):
     return ts.strftime("%Y-%m-%d")
 
 
+def drop_pageview_indexes(session):
+    """Drop non-essential pageviews indexes before massive bulk load."""
+    dialect_name = session.get_bind().dialect.name
+    if dialect_name != "postgresql":
+        print(f"Skipping index drop for dialect: {dialect_name}")
+        return
+
+    print("Dropping pageviews indexes before bulk load...")
+    index_statements = [
+        "DROP INDEX IF EXISTS idx_pageviews_timestamp",
+        "DROP INDEX IF EXISTS idx_pageviews_language",
+        "DROP INDEX IF EXISTS idx_pageviews_species",
+        "DROP INDEX IF EXISTS idx_pageviews_combined",
+        "DROP INDEX IF EXISTS idx_pageviews_optimized",
+    ]
+    for statement in index_statements:
+        session.execute(text(statement))
+    session.commit()
+
+
+def create_pageview_indexes(session):
+    """Recreate pageviews indexes after bulk load completes."""
+    dialect_name = session.get_bind().dialect.name
+    if dialect_name != "postgresql":
+        print(f"Skipping index creation for dialect: {dialect_name}")
+        return
+
+    print("Recreating pageviews indexes after bulk load...")
+    index_statements = [
+        "CREATE INDEX IF NOT EXISTS idx_pageviews_timestamp ON pageviews(timestamp_id)",
+        "CREATE INDEX IF NOT EXISTS idx_pageviews_language ON pageviews(language_id)",
+        "CREATE INDEX IF NOT EXISTS idx_pageviews_species ON pageviews(species_id)",
+        "CREATE INDEX IF NOT EXISTS idx_pageviews_combined ON pageviews(timestamp_id, language_id, species_id)",
+        "CREATE INDEX IF NOT EXISTS idx_pageviews_optimized ON pageviews(timestamp_id, language_id, species_id, number_of_pageviews)",
+    ]
+    for statement in index_statements:
+        session.execute(text(statement))
+    session.commit()
+
+
 with SessionFactory() as session:
     species_dao = SQLAlchemySpeciesDAO(session)
     species_service = SpeciesService(species_dao)
@@ -118,10 +158,11 @@ with SessionFactory() as session:
             get_language_range
         )
 
-    for index, row in df_languages.iterrows():
-        language_service.add_language(
-            row["language"], row["iso639_3"], row["language_range"]
-        )
+    language_rows = [
+        (row["language"], row["iso639_3"], row["language_range"])
+        for _, row in df_languages.iterrows()
+    ]
+    language_service.add_many_languages(language_rows)
 
     # Load all type-specific species files and concatenate
     print("Loading species data...")
@@ -149,8 +190,8 @@ with SessionFactory() as session:
         os.path.join(os.getcwd(), "data_wrangling", "df_time.pkl"), "rb"
     ) as fileobject:
         df_time = pickle.load(fileobject)
-    for index, row in df_time.iterrows():
-        timestamp_service.add_timestamp(row["timestamp"])
+    timestamp_rows = [row["timestamp"] for _, row in df_time.iterrows()]
+    timestamp_service.add_many_timestamps(timestamp_rows)
 
     all_languages = language_dao.get_all()
     language_lookup = {lang.name: lang.id for lang in all_languages}
@@ -180,46 +221,93 @@ with SessionFactory() as session:
         ) as fileobject:
             df_pageviews = pickle.load(fileobject)
 
-    batch_size = 500000  # one batch could take around 45 seconds
+    batch_size = int(os.getenv("PAGEVIEW_BATCH_SIZE", "1000000"))
     batch_count = len(df_pageviews) // batch_size + (len(df_pageviews) % batch_size > 0)
     print(f"Batch count: {batch_count}")
     print(
         f"Inserting {len(df_pageviews)} pageviews into the database in batches of {batch_size}"
     )
-    for k in range(batch_count):  # for each batch
-        pageviews_list = []  # new list for each batch
+    drop_pageview_indexes(session)
+    skipped_total = 0
+    time_total = 0.0
 
-        for index, row in df_pageviews.iloc[
-            k * batch_size : min((k + 1) * batch_size, len(df_pageviews))
-        ].iterrows():  # go through each row in the batch
-            language_id = language_lookup.get(row["language"])  # Use lookup
-            species_id = species_lookup.get(row["species"])  # Use lookup
-            timestamp_id = timestamp_lookup.get(
-                normalize_timestamp_key(row["timestamp"])
-            )  # Use lookup
-            if (
-                language_id is None or species_id is None or timestamp_id is None
-            ):  # Only add if all IDs are found
+    try:
+        for k in range(batch_count):
+            start_time = pd.Timestamp.now()
+            start = k * batch_size
+            end = min((k + 1) * batch_size, len(df_pageviews))
+            batch_df = df_pageviews.iloc[start:end][
+                ["language", "species", "timestamp", "number_of_pageviews"]
+            ].copy()
+
+            batch_df["language_id"] = batch_df["language"].map(language_lookup)
+            batch_df["species_id"] = batch_df["species"].map(species_lookup)
+
+            parsed_ts = pd.to_datetime(batch_df["timestamp"], errors="coerce")
+            batch_df["timestamp_key"] = parsed_ts.dt.strftime("%Y-%m-%d")
+            batch_df.loc[parsed_ts.isna(), "timestamp_key"] = None
+            batch_df["timestamp_id"] = batch_df["timestamp_key"].map(timestamp_lookup)
+
+            valid_rows = batch_df.dropna(
+                subset=["language_id", "species_id", "timestamp_id", "number_of_pageviews"]
+            )
+            skipped_rows = len(batch_df) - len(valid_rows)
+            skipped_total += skipped_rows
+
+            if valid_rows.empty:
+                print(f"Skipped batch {k}: no valid rows in range {start} to {end - 1}")
                 continue
 
-            pageviews_list.append(
-                (timestamp_id, language_id, species_id, row["number_of_pageviews"])
-            )  # add all rows to pageviews_list
+            pageviews_list = [
+                (
+                    int(timestamp_id),
+                    int(language_id),
+                    int(species_id),
+                    int(number_of_pageviews),
+                )
+                for timestamp_id, language_id, species_id, number_of_pageviews in valid_rows[
+                    [
+                        "timestamp_id",
+                        "language_id",
+                        "species_id",
+                        "number_of_pageviews",
+                    ]
+                ].itertuples(index=False, name=None)
+            ]
 
-        pageview_service.add_many_pageviews(
-            pageviews_list
-        )  # insert all rows in the batch into the database (in one commit)
-        print(
-            f"Inserted batch {k}: rows {k * batch_size} to {min((k + 1) * batch_size, len(df_pageviews)) - 1}"
-        )
+            pageview_service.add_many_pageviews(pageviews_list)
+            end_time = pd.Timestamp.now()
+            batch_time = (end_time - start_time).total_seconds()
+            time_total += batch_time
+            print(
+                f"Inserted batch {k + 1}/{batch_count}: rows {start} to {end - 1}, inserted {len(pageviews_list)}, skipped {skipped_rows}, batch time: {batch_time:.2f}s"
+            )
+    finally:
+        start_time = pd.Timestamp.now()
+        create_pageview_indexes(session)
+        end_time = pd.Timestamp.now()
+        index_time = (end_time - start_time).total_seconds()
+        time_total += index_time
+        print(f"Time for creating pageview indexes: {index_time:.2f}s")
+
+    print(f"Total skipped pageview rows: {skipped_total}")
+    print(f"Total time for inserting pageviews: {time_total:.2f}s")
 
     # Refresh materialized views after all data is loaded
     print("Refreshing materialized views...")
+    start_time = pd.Timestamp.now()
     session.execute(
         text("REFRESH MATERIALIZED VIEW mv_monthly_language_pageviews")
     )
+    end_time = pd.Timestamp.now()
+    materialized_view_time = (end_time - start_time).total_seconds()
+    print(f"Time for refreshing mv_monthly_language_pageviews: {materialized_view_time:.2f}s")
+    start_time = pd.Timestamp.now()
     session.execute(
         text("REFRESH MATERIALIZED VIEW mv_monthly_species_pageviews")
     )
+    end_time = pd.Timestamp.now()
+    materialized_view_time = (end_time - start_time).total_seconds()
+    print(f"Time for refreshing mv_monthly_species_pageviews: {materialized_view_time:.2f}s")
     session.commit()
     print("Materialized views refreshed.")

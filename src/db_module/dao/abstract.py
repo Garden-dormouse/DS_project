@@ -142,6 +142,22 @@ class LanguageDAO(ABC):
         """
         pass
 
+    @abstractmethod
+    def create_many(
+        self, languages_list: list[tuple[str, str, str]]
+    ) -> list[Language]:
+        """
+        Create and persist multiple Languages.
+
+        Args:
+            languages_list (list[tuple[str, str, str]]):
+                List of (name, iso_639_3, language_range) tuples.
+
+        Returns:
+            list[Language]: Newly created Language objects.
+        """
+        pass
+
 
 class TimestampDAO(ABC):
     """
@@ -194,6 +210,19 @@ class TimestampDAO(ABC):
 
         Returns:
             Timestamp: The newly created Timestamp.
+        """
+        pass
+
+    @abstractmethod
+    def create_many(self, times: list[datetime.datetime]) -> list[Timestamp]:
+        """
+        Create and persist multiple Timestamps.
+
+        Args:
+            times (list[datetime.datetime]): Timestamp values to insert.
+
+        Returns:
+            list[Timestamp]: Newly created Timestamp objects.
         """
         pass
 
