@@ -34,8 +34,8 @@ class TestPageviewService(unittest.TestCase):
 
         # Mock what the DAO returns
         mock_dao.get_top_species_by_language.return_value = [
-            (1, "Panthera leo", 150),
-            (2, "Canis lupus", 75),
+            (1, "Panthera leo", "mammal", 150),
+            (2, "Canis lupus", "mammal", 75),
         ]
 
         result = service.get_top_species_for_language("en", limit=2)
@@ -43,6 +43,7 @@ class TestPageviewService(unittest.TestCase):
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0]["id"], 1)
         self.assertEqual(result[0]["latin_name"], "Panthera leo")
+        self.assertEqual(result[0]["type"], "mammal")
         self.assertEqual(result[0]["pageviews"], 150)
         self.assertEqual(result[1]["pageviews"], 75)
 
@@ -65,7 +66,7 @@ class TestPageviewService(unittest.TestCase):
         service = PageviewService(mock_dao)
 
         mock_dao.get_top_species_by_language.return_value = [
-            (1, "Panthera leo", 500),
+            (1, "Panthera leo", "mammal", 500),
         ]
 
         result = service.get_top_species_for_language(
@@ -78,6 +79,7 @@ class TestPageviewService(unittest.TestCase):
 
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["latin_name"], "Panthera leo")
+        self.assertEqual(result[0]["type"], "mammal")
         mock_dao.get_top_species_by_language.assert_called_once_with(
             language_code="eng",
             limit=10,
@@ -258,3 +260,32 @@ class TestSpeciesService(unittest.TestCase):
         service.add_many_species(species_list)
 
         mock_dao.create_many.assert_called_once_with(species_list)
+
+    def test_search_species_returns_paginated_payload(self):
+        """Test searching species returns frontend-ready paginated data."""
+        mock_dao = Mock()
+        service = SpeciesService(mock_dao)
+
+        species = Mock()
+        species.id = 7
+        species.latin_name = "Panthera pardus"
+        species.type = "mammal"
+        mock_dao.search.return_value = ([species], True)
+
+        result = service.search_species(
+            query="panthera",
+            species_type="mammal",
+            limit=25,
+            offset=50,
+        )
+
+        mock_dao.search.assert_called_once_with(
+            query="panthera",
+            species_type="mammal",
+            limit=25,
+            offset=50,
+        )
+        self.assertEqual(result["items"][0]["id"], 7)
+        self.assertEqual(result["items"][0]["latin_name"], "Panthera pardus")
+        self.assertTrue(result["has_more"])
+        self.assertEqual(result["next_offset"], 51)
