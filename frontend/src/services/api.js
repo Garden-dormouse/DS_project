@@ -60,9 +60,12 @@ export const api = {
     return response.json();
   },
 
-  async getTopSpeciesByLanguage(languageCode, options = {}) {
+  async getTopSpeciesByLanguages(languageCodes = [], options = {}) {
     const params = new URLSearchParams();
-    params.append("language_code", languageCode);
+
+    if (Array.isArray(languageCodes) && languageCodes.length > 0) {
+      params.append("language_codes", languageCodes.join(","));
+    }
 
     if (options.limit) params.append("limit", options.limit);
     if (options.startMonth) params.append("start_month", options.startMonth);
