@@ -63,19 +63,27 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json(), [])
 
-    @patch("api.PageviewService")
-    @patch("api.SQLAlchemyPageviewDAO")
     @patch("api.SessionFactory")
-    def test_top_species_returns_results(
-        self, mock_session_factory, mock_pageview_dao, mock_service
-    ):
+    def test_top_species_returns_results(self, mock_session_factory):
         """Test /api/pageviews/top-species with language code."""
-        mock_session = Mock()
-        mock_session_factory.return_value.__enter__.return_value = mock_session
+        # Create mock row object that supports dictionary-like access
+        mock_row = Mock()
+        mock_row.__getitem__ = Mock(
+            side_effect=lambda key: {
+                "id": 1,
+                "latin_name": "Panthera leo",
+                "type": "mammal",
+                "pageviews": 100,
+            }[key]
+        )
 
-        mock_service.return_value.get_top_species_for_language.return_value = [
-            {"id": 1, "latin_name": "Panthera leo", "pageviews": 100}
-        ]
+        # Mock the session execute chain: execute().mappings().all()
+        mock_session = Mock()
+        mock_mappings = Mock()
+        mock_mappings.all.return_value = [mock_row]
+        mock_session.execute.return_value.mappings.return_value = mock_mappings
+
+        mock_session_factory.return_value.__enter__.return_value = mock_session
 
         response = self.client.get(
             "/api/pageviews/top-species?language_code=eng&limit=1"

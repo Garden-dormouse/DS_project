@@ -77,6 +77,20 @@ export const api = {
     return response.json();
   },
 
+  async getTopSpeciesByLanguage(languageCode, options = {}) {
+    const params = new URLSearchParams();
+
+    if (languageCode) params.append("language_code", languageCode);
+    if (options.limit) params.append("limit", options.limit);
+    if (options.startMonth) params.append("start_month", options.startMonth);
+    if (options.endMonth) params.append("end_month", options.endMonth);
+    if (options.speciesType) params.append("species_type", options.speciesType);
+
+    const response = await fetch(`${API_BASE_URL}/pageviews/top-species?${params}`);
+    if (!response.ok) throw new Error("Failed to fetch top species");
+    return response.json();
+  },
+
   async getTopLanguagesBySpecies(options = {}) {
     const params = new URLSearchParams();
 

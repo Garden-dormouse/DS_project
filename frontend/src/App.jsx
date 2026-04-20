@@ -109,6 +109,25 @@ function mergeTimeseriesResults(results, months) {
     .map(([month, pageviews]) => ({ month, pageviews }));
 }
 
+function mergeTopSpeciesResults(results, limit) {
+  const speciesMap = new Map();
+
+  for (const rows of results) {
+    for (const row of Array.isArray(rows) ? rows : []) {
+      if (row.id != null) {
+        const existing = speciesMap.get(row.id);
+        if (!existing || row.pageviews > existing.pageviews) {
+          speciesMap.set(row.id, row);
+        }
+      }
+    }
+  }
+
+  return Array.from(speciesMap.values())
+    .sort((a, b) => (b.pageviews || 0) - (a.pageviews || 0))
+    .slice(0, limit);
+}
+
 export default function App() {
   // React Query hooks - handle caching automatically
   const { data: languages = [] } = useLanguages();
