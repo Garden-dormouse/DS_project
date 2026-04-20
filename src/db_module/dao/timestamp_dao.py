@@ -30,3 +30,28 @@ class SQLAlchemyTimestampDAO(TimestampDAO):
         self.session.add(timestamp)
         self.session.commit()
         return timestamp
+
+    def create_many(self, times: list[datetime.datetime]) -> list[Timestamp]:
+        if not times:
+            return []
+
+        unique_times = list(dict.fromkeys(times))
+        existing_times = {
+            row.time
+            for row in self.session.query(Timestamp.time)
+            .filter(Timestamp.time.in_(unique_times))
+            .all()
+            if row.time is not None
+        }
+
+        timestamp_objects = [
+            Timestamp(time=t)
+            for t in unique_times
+            if t is not None and t not in existing_times
+        ]
+
+        if timestamp_objects:
+            self.session.add_all(timestamp_objects)
+            self.session.commit()
+
+        return timestamp_objects

@@ -2,10 +2,43 @@ import csv
 import os
 import pickle
 from collections import defaultdict
+from textwrap import shorten
 from urllib.request import urlretrieve
 
 import langcodes  # for two-letter ISO 639 language codes
 import pandas as pd
+
+# That one extinct deer(tm) really loves to be mentioned in the logs, so we want to limit how many times they're logged
+MAX_LOG_EXAMPLES = 5
+
+
+def record_issue(issue_bucket, key, example):
+    """Track issue counts and keep only a few sample rows for display."""
+    issue_bucket[key]["count"] += 1
+    if len(issue_bucket[key]["examples"]) < MAX_LOG_EXAMPLES:
+        issue_bucket[key]["examples"].append(shorten(str(example), width=140))
+
+
+def print_issue_summary(animal_type, issue_bucket):
+    """Print a compact summary of skipped/problematic rows for one animal type."""
+    issues_to_report = [
+        (key, details)
+        for key, details in issue_bucket.items()
+        if details["count"] > 0
+    ]
+    if not issues_to_report:
+        print(f"No skipped rows or parsing issues for {animal_type}.")
+        return
+
+    print(f"Issue summary for {animal_type}:")
+    for key, details in issues_to_report:
+        label = key.replace("_", " ").capitalize()
+        print(f"  - {label}: {details['count']}")
+        for example in details["examples"]:
+            print(f"    example: {example}")
+        remaining_count = details["count"] - len(details["examples"])
+        if remaining_count > 0:
+            print(f"    ... and {remaining_count} more")
 
 print("Downloading raw data")
 downloads = [
@@ -82,6 +115,8 @@ for animal_type in animal_types:
     print(f"{'=' * 50}")
 
     raw_data = f"pageview_{animal_type}_monthly"
+    issue_bucket = defaultdict(lambda: {"count": 0, "examples": []})
+    missing_pageview_species = set()
 
     try:
         with open(f"./{raw_data}.pkl", "rb") as fileobject:
@@ -112,6 +147,15 @@ for animal_type in animal_types:
     list_language_codes = list()
     # finding all the languages from the pageview data:
     for spec in df_species["latin_name"]:
+        if dct[spec] is None:
+            if spec not in missing_pageview_species:
+                record_issue(
+                    issue_bucket,
+                    "missing_pageview_data",
+                    f"species={spec}",
+                )
+                missing_pageview_species.add(spec)
+            continue
         languages = list(dct[spec].keys())
         list_language_codes.extend(languages)
 
@@ -177,13 +221,30 @@ for animal_type in animal_types:
     languages = list()
 
     for spec in df_species["latin_name"]:
+        if dct[spec] is None:
+            if spec not in missing_pageview_species:
+                record_issue(
+                    issue_bucket,
+                    "missing_pageview_data",
+                    f"species={spec}",
+                )
+                missing_pageview_species.add(spec)
+            continue
         languages_spec = list(dct[spec].keys())
 
         for lang in languages_spec:
             timestamps_lang = dct[spec][lang]["timestamp"]
-            timestamps_lang_datetime = pd.to_datetime(
-                timestamps_lang, format="%Y%m%d%H"
-            )
+            try:
+                timestamps_lang_datetime = pd.to_datetime(
+                    timestamps_lang, format="%Y%m%d%H"
+                )
+            except Exception as e:
+                record_issue(
+                    issue_bucket,
+                    "timestamp_parse_errors",
+                    f"species={spec}, language={lang}, error={e}",
+                )
+                continue
             timestamps.extend(timestamps_lang_datetime)
 
             species.extend([spec] * len(timestamps_lang))
@@ -204,6 +265,8 @@ for animal_type in animal_types:
             "number_of_pageviews": pageviews,
         }
     )
+
+    print_issue_summary(animal_type, issue_bucket)
 
     ### Saving tables as pickle files
     print(f"Saving {animal_type} tables to pickle files")

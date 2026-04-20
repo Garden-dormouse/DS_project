@@ -45,3 +45,8 @@ class LanguageService:
     def add_language(self, name: str, iso_639_3: str, language_range: str):
 
         return self.language_dao.create(name, iso_639_3, language_range)
+
+    def add_many_languages(
+        self, languages_list: list[tuple[str, str, str]]
+    ):
+        return self.language_dao.create_many(languages_list)

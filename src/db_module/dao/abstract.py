@@ -44,6 +44,29 @@ class SpeciesDAO(ABC):
         pass
 
     @abstractmethod
+    def search(
+        self,
+        query: str | None = None,
+        species_type: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[Species], bool]:
+        """
+        Retrieve a paginated species result set.
+
+        Args:
+            query (str | None): Optional free-text search for the Latin name.
+            species_type (str | None): Optional species type filter.
+            limit (int): Maximum number of rows to return.
+            offset (int): Result offset for pagination.
+
+        Returns:
+            tuple[list[Species], bool]: Matching Species rows and a flag indicating
+            whether more rows are available after this page.
+        """
+        pass
+
+    @abstractmethod
     def create_single(self, latin_name: str, species_type: str) -> Species:
         """
         Create and persist a new Species.
@@ -142,6 +165,22 @@ class LanguageDAO(ABC):
         """
         pass
 
+    @abstractmethod
+    def create_many(
+        self, languages_list: list[tuple[str, str, str]]
+    ) -> list[Language]:
+        """
+        Create and persist multiple Languages.
+
+        Args:
+            languages_list (list[tuple[str, str, str]]):
+                List of (name, iso_639_3, language_range) tuples.
+
+        Returns:
+            list[Language]: Newly created Language objects.
+        """
+        pass
+
 
 class TimestampDAO(ABC):
     """
@@ -194,6 +233,19 @@ class TimestampDAO(ABC):
 
         Returns:
             Timestamp: The newly created Timestamp.
+        """
+        pass
+
+    @abstractmethod
+    def create_many(self, times: list[datetime.datetime]) -> list[Timestamp]:
+        """
+        Create and persist multiple Timestamps.
+
+        Args:
+            times (list[datetime.datetime]): Timestamp values to insert.
+
+        Returns:
+            list[Timestamp]: Newly created Timestamp objects.
         """
         pass
 

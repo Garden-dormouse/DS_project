@@ -1,5 +1,7 @@
 from datetime import date
-from sqlalchemy import func
+from io import StringIO
+
+from sqlalchemy import func, insert
 from sqlalchemy.orm import Session
 
 from db_module.dao.abstract import PageviewDAO
@@ -222,15 +224,42 @@ class SQLAlchemyPageviewDAO(PageviewDAO):
         self,
         pageviews_list: list[tuple[int, int, int, int]],
     ) -> list[Pageview]:
-        pageviews = [
-            Pageview(
-                timestamp_id=timestamp_id,
-                language_id=language_id,
-                species_id=species_id,
-                number_of_pageviews=number_of_pageviews,
-            )
+        if not pageviews_list:
+            return []
+
+        bind = self.session.get_bind()
+        if bind is not None and bind.dialect.name == "postgresql":
+            copy_buffer = StringIO()
+            for timestamp_id, language_id, species_id, number_of_pageviews in pageviews_list:
+                copy_buffer.write(
+                    f"{timestamp_id}\t{language_id}\t{species_id}\t{number_of_pageviews}\n"
+                )
+            copy_buffer.seek(0)
+
+            raw_connection = self.session.connection().connection
+            with raw_connection.cursor() as cursor:
+                cursor.copy_from(
+                    copy_buffer,
+                    "pageviews",
+                    columns=(
+                        "timestamp_id",
+                        "language_id",
+                        "species_id",
+                        "number_of_pageviews",
+                    ),
+                )
+            self.session.commit()
+            return []
+
+        payload = [
+            {
+                "timestamp_id": timestamp_id,
+                "language_id": language_id,
+                "species_id": species_id,
+                "number_of_pageviews": number_of_pageviews,
+            }
             for timestamp_id, language_id, species_id, number_of_pageviews in pageviews_list
         ]
-        self.session.add_all(pageviews)
+        self.session.execute(insert(Pageview), payload)
         self.session.commit()
-        return pageviews
+        return []

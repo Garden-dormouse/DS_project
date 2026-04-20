@@ -19,3 +19,6 @@ class TimestampService:
 
     def add_timestamp(self, time: datetime.datetime):
         return self.timestamp_dao.create(time)
+
+    def add_many_timestamps(self, times: list[datetime.datetime]):
+        return self.timestamp_dao.create_many(times)

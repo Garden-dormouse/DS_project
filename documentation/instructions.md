@@ -21,6 +21,9 @@ Download [iso-639-3-macrolanguages.tab](https://iso639-3.sil.org/sites/iso639-3/
 ```
 python3 datawrangle.py
 ```
+> [!TIP]
+> If you want to adjust the batch size (default: 1,000,000) for populating the `pageviews` table, you can include the batch size as the value of the variable `PAGEVIEW_BATCH_SIZE`.
+
 Next, go back to the root and populate the database:
 ```
 python3 src/populate_db.py

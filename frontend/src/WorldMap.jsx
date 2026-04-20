@@ -41,7 +41,6 @@ export default function WorldMap({
 
   useEffect(() => {
     let alive = true;
-    setError("");
     fetch(geojsonUrl)
       .then((r) => {
         if (!r.ok) throw new Error(`Failed to fetch ${geojsonUrl} (${r.status})`);
@@ -49,6 +48,7 @@ export default function WorldMap({
       })
       .then((data) => {
         if (!alive) return;
+        setError("");
         setCountries(data.features ?? []);
       })
       .catch((e) => {

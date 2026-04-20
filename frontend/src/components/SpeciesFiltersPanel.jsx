@@ -1,32 +1,112 @@
-import { useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import "./panel.css";
+import { api } from "../services/api.js";
+
+const PAGE_SIZE = 50;
 
 export default function SpeciesFiltersPanel({
-  speciesList,
-  selectedSpeciesId,
-  onSelectSpeciesId,
+  selectedSpecies,
+  onSelectSpecies,
   speciesTypes,
   selectedSpeciesType,
   onSelectSpeciesType,
 }) {
   const [search, setSearch] = useState("");
+  const [speciesResults, setSpeciesResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [error, setError] = useState(null);
 
-  const filteredSpecies = useMemo(() => {
-    const q = search.trim().toLowerCase();
+  const deferredSearch = useDeferredValue(search.trim());
 
-    return speciesList.filter((s) => {
-      const matchesSearch =
-        !q || String(s.latin_name || "").toLowerCase().includes(q);
+  useEffect(() => {
+    let ignore = false;
 
-      const matchesType =
-        !selectedSpeciesType || String(s.type || "") === selectedSpeciesType;
+    async function loadFirstPage() {
+      try {
+        setLoading(true);
+        setError(null);
 
-      return matchesSearch && matchesType;
-    });
-  }, [speciesList, search, selectedSpeciesType]);
+        const response = await api.getSpecies({
+          query: deferredSearch || null,
+          speciesType: selectedSpeciesType,
+          limit: PAGE_SIZE,
+          offset: 0,
+        });
 
-  const selectedSpecies =
-    speciesList.find((s) => s.id === selectedSpeciesId) || null;
+        if (ignore) return;
+
+        setSpeciesResults(Array.isArray(response.items) ? response.items : []);
+        setHasMore(Boolean(response.has_more));
+      } catch (err) {
+        if (ignore) return;
+        setSpeciesResults([]);
+        setHasMore(false);
+        setError(err.message || "Failed to search species");
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadFirstPage();
+
+    return () => {
+      ignore = true;
+    };
+  }, [deferredSearch, selectedSpeciesType]);
+
+  const visibleSpecies = useMemo(() => {
+    if (!selectedSpecies) {
+      return speciesResults;
+    }
+
+    const alreadyVisible = speciesResults.some((species) => species.id === selectedSpecies.id);
+    if (alreadyVisible) {
+      return speciesResults;
+    }
+
+    const normalizedQuery = deferredSearch.toLowerCase();
+    const matchesQuery =
+      !normalizedQuery ||
+      String(selectedSpecies.latin_name || "").toLowerCase().includes(normalizedQuery);
+    const matchesType =
+      !selectedSpeciesType || String(selectedSpecies.type || "") === selectedSpeciesType;
+
+    if (!matchesQuery || !matchesType) {
+      return speciesResults;
+    }
+
+    return [selectedSpecies, ...speciesResults];
+  }, [deferredSearch, selectedSpecies, selectedSpeciesType, speciesResults]);
+
+  async function handleLoadMore() {
+    if (loading || loadingMore || !hasMore) {
+      return;
+    }
+
+    try {
+      setLoadingMore(true);
+      setError(null);
+
+      const response = await api.getSpecies({
+        query: deferredSearch || null,
+        speciesType: selectedSpeciesType,
+        limit: PAGE_SIZE,
+        offset: speciesResults.length,
+      });
+
+      const nextItems = Array.isArray(response.items) ? response.items : [];
+      setSpeciesResults((current) => [...current, ...nextItems]);
+      setHasMore(Boolean(response.has_more));
+    } catch (err) {
+      setError(err.message || "Failed to load more species");
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   return (
     <div className="panelInner">
@@ -86,38 +166,66 @@ export default function SpeciesFiltersPanel({
               overflowY: "auto",
             }}
           >
-            {filteredSpecies.map((s) => {
-              const checked = selectedSpeciesId === s.id;
+            {loading && visibleSpecies.length === 0 ? (
+              <div className="note" style={{ padding: "1rem" }}>
+                Searching species...
+              </div>
+            ) : visibleSpecies.length === 0 ? (
+              <div className="note" style={{ padding: "1rem" }}>
+                No species matched the current search.
+              </div>
+            ) : (
+              visibleSpecies.map((s) => {
+                const checked = selectedSpecies?.id === s.id;
 
-              return (
-                <label
-                  key={s.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "10px 12px",
-                    cursor: "pointer",
-                    borderBottom: "1px solid rgba(255,255,255,0.06)",
-                    background: checked ? "rgba(96,165,250,0.08)" : "transparent",
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="selected-species"
-                    checked={checked}
-                    onChange={() => onSelectSpeciesId(s.id)}
-                  />
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>{s.latin_name}</div>
-                    <div className="hint" style={{ marginTop: 2 }}>
-                      id: {s.id} · {s.type || "unknown"}
+                return (
+                  <label
+                    key={s.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "10px 12px",
+                      cursor: "pointer",
+                      borderBottom: "1px solid rgba(255,255,255,0.06)",
+                      background: checked ? "rgba(96,165,250,0.08)" : "transparent",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="selected-species"
+                      checked={checked}
+                      onChange={() => onSelectSpecies(s)}
+                    />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>{s.latin_name}</div>
+                      <div className="hint" style={{ marginTop: 2 }}>
+                        id: {s.id} · {s.type || "unknown"}
+                      </div>
                     </div>
-                  </div>
-                </label>
-              );
-            })}
+                  </label>
+                );
+              })
+            )}
           </div>
+
+          {hasMore && (
+            <button
+              type="button"
+              className="btn"
+              style={{ marginTop: 10, width: "100%" }}
+              onClick={handleLoadMore}
+              disabled={loading || loadingMore}
+            >
+              {loadingMore ? "Loading more species..." : "Load more species"}
+            </button>
+          )}
+
+          {error && (
+            <div className="note" style={{ marginTop: 10 }}>
+              {error}
+            </div>
+          )}
 
           <div className="hint" style={{ marginTop: 10 }}>
             {selectedSpecies ? (
@@ -130,7 +238,9 @@ export default function SpeciesFiltersPanel({
           </div>
 
           <div className="hint" style={{ marginTop: 6 }}>
-            Showing {filteredSpecies.length} / {speciesList.length} species
+            {loading && visibleSpecies.length > 0
+              ? `Loaded ${visibleSpecies.length} species so far`
+              : `Loaded ${visibleSpecies.length} species${hasMore ? " so far" : ""}`}
           </div>
         </div>
       </div>

@@ -18,25 +18,35 @@ class TestAPIEndpoints(unittest.TestCase):
         self.client = self.app.test_client()
 
     def test_get_species_returns_json(self):
-        """Test /api/species endpoint returns list."""
+        """Test /api/species endpoint returns paginated search payload."""
         with patch("api.SessionFactory") as mock_session_factory:
             mock_session = Mock()
             mock_session_factory.return_value.__enter__.return_value = mock_session
 
-            with patch("api.SQLAlchemySpeciesDAO") as mock_dao:
-                mock_species = Mock()
-                mock_species.id = 1
-                mock_species.latin_name = "Panthera leo"
-                mock_species.type = "mammal"
-                mock_dao.return_value.get_all.return_value = [mock_species]
+            with patch("api.SpeciesService") as mock_service:
+                mock_service.return_value.search_species.return_value = {
+                    "items": [
+                        {"id": 1, "latin_name": "Panthera leo", "type": "mammal"}
+                    ],
+                    "limit": 25,
+                    "offset": 0,
+                    "has_more": True,
+                    "next_offset": 25,
+                }
 
-                response = self.client.get("/api/species")
+                response = self.client.get("/api/species?limit=25&q=panthera")
 
                 self.assertEqual(response.status_code, 200)
                 data = response.get_json()
-                self.assertEqual(len(data), 1)
-                self.assertEqual(data[0]["id"], 1)
-                self.assertEqual(data[0]["latin_name"], "Panthera leo")
+                self.assertEqual(len(data["items"]), 1)
+                self.assertEqual(data["items"][0]["id"], 1)
+                self.assertEqual(data["items"][0]["latin_name"], "Panthera leo")
+                mock_service.return_value.search_species.assert_called_once_with(
+                    query="panthera",
+                    species_type=None,
+                    limit=25,
+                    offset=0,
+                )
 
     def test_get_species_types(self):
         """Test /api/species/types endpoint returns available species types."""
