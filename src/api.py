@@ -6,6 +6,7 @@ import os
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from dotenv import load_dotenv
+from sqlalchemy import text
 
 from db_module.engine import get_engine, get_session_factory
 from db_module.dao.species_dao import SQLAlchemySpeciesDAO
@@ -77,34 +78,87 @@ def get_languages():
 @app.route("/api/pageviews/top-species", methods=["GET"])
 def get_top_species():
     """
-    Get top species by pageviews for a specific language and optional month range.
+    Get top species by pageviews for one or more languages and optional month range.
 
     Query params:
-    - language_code: ISO 639-3
+    - language_codes: comma-separated ISO 639-3 codes, e.g. eng,fra,deu
+    - language_code: single ISO 639-3 code (backward compatible)
     - limit: Number of results (default 20)
     - start_month: YYYY-MM
     - end_month: YYYY-MM
     - species_type: mammal | bird | reptile
     """
-    language_code = request.args.get("language_code")
+    language_codes_raw = request.args.get("language_codes", "").strip()
+    single_language_code = request.args.get("language_code", "").strip()
     limit = request.args.get("limit", default=20, type=int)
     start_month = request.args.get("start_month")
     end_month = request.args.get("end_month")
     species_type = request.args.get("species_type")
 
-    if not language_code:
+    language_codes = []
+    if language_codes_raw:
+        language_codes = [c.strip() for c in language_codes_raw.split(",") if c.strip()]
+    elif single_language_code:
+        language_codes = [single_language_code]
+
+    if not language_codes:
         return jsonify([])
 
     with SessionFactory() as session:
-        pageview_dao = SQLAlchemyPageviewDAO(session)
-        service = PageviewService(pageview_dao)
-        result = service.get_top_species_for_language(
-            language_code=language_code,
-            limit=limit,
-            start_month=start_month,
-            end_month=end_month,
-            species_type=species_type,
+        placeholders = []
+        params = {"limit": limit}
+
+        for i, code in enumerate(language_codes):
+            key = f"lang_{i}"
+            placeholders.append(f":{key}")
+            params[key] = code
+
+        where_clauses = [f"l.ISO_639_3 IN ({', '.join(placeholders)})"]
+
+        if start_month:
+            where_clauses.append("to_char(t.Time, 'YYYY-MM') >= :start_month")
+            params["start_month"] = start_month
+
+        if end_month:
+            where_clauses.append("to_char(t.Time, 'YYYY-MM') <= :end_month")
+            params["end_month"] = end_month
+
+        if species_type:
+            where_clauses.append("s.Type = :species_type")
+            params["species_type"] = species_type
+
+        sql = text(
+            f"""
+            SELECT
+                s.ID AS id,
+                s.Latin_name AS latin_name,
+                s.Type AS type,
+                SUM(p.Number_of_Pageviews) AS pageviews
+            FROM Pageviews p
+            JOIN Species s
+                ON s.ID = p.Species_ID
+            JOIN Languages l
+                ON l.ID = p.Language_ID
+            JOIN Timestamps t
+                ON t.ID = p.Timestamp_ID
+            WHERE {" AND ".join(where_clauses)}
+            GROUP BY s.ID, s.Latin_name, s.Type
+            ORDER BY pageviews DESC
+            LIMIT :limit
+            """
         )
+
+        rows = session.execute(sql, params).mappings().all()
+
+        result = [
+            {
+                "id": int(row["id"]),
+                "latin_name": row["latin_name"],
+                "type": row["type"],
+                "pageviews": int(row["pageviews"] or 0),
+            }
+            for row in rows
+        ]
 
     return jsonify(result)
 

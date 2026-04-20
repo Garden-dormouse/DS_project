@@ -60,33 +60,6 @@ function formatRangeLabel(monthsInRange, availableMonths) {
   return `${monthsInRange[0]} → ${monthsInRange[monthsInRange.length - 1]}`;
 }
 
-function mergeTopSpeciesResults(results, limit = 20) {
-  const merged = new Map();
-
-  for (const rows of results) {
-    for (const row of Array.isArray(rows) ? rows : []) {
-      const key = row.id ?? row.latin_name;
-      if (!merged.has(key)) {
-        merged.set(key, {
-          id: row.id,
-          latin_name: row.latin_name,
-          type: row.type || null,
-          pageviews: Number(row.pageviews || 0),
-        });
-      } else {
-        merged.get(key).pageviews += Number(row.pageviews || 0);
-        if (!merged.get(key).type && row.type) {
-          merged.get(key).type = row.type;
-        }
-      }
-    }
-  }
-
-  return Array.from(merged.values())
-    .sort((a, b) => b.pageviews - a.pageviews)
-    .slice(0, limit);
-}
-
 function normalizeRangeFeatureCollection(input) {
   if (!input) return null;
   if (input.type === "FeatureCollection" && Array.isArray(input.features)) return input;
@@ -313,16 +286,12 @@ export default function App() {
 
     async function fetchLanguageData() {
       try {
-        const topSpeciesResponses = await Promise.all(
-          selectedLanguages.map((languageCode) =>
-            api.getTopSpeciesByLanguage(languageCode, {
-              limit: 100,
-              startMonth,
-              endMonth,
-              speciesType: selectedSpeciesType,
-            })
-          )
-        );
+        const topSpeciesResponse = await api.getTopSpeciesByLanguages(selectedLanguages, {
+          limit: 20,
+          startMonth,
+          endMonth,
+          speciesType: selectedSpeciesType,
+        });
 
         const missingRangeCodes = selectedLanguages.filter(
           (code) => !languageRangeCache[code]
@@ -355,7 +324,7 @@ export default function App() {
           .map((code) => mergedCache[code])
           .filter(Boolean);
 
-        setTopSpecies(mergeTopSpeciesResults(topSpeciesResponses, 20));
+        setTopSpecies(Array.isArray(topSpeciesResponse) ? topSpeciesResponse : []);
         setLanguageRange(mergeLanguageRanges(selectedRanges));
         setSelectedIso3(null);
         setSelectedSpecies(null);

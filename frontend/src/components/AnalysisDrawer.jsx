@@ -98,28 +98,6 @@ export default function AnalysisDrawer({
             marginBottom: 16,
           }}
         >
-          <div className="cardHeader">
-            <div>
-              <div className="cardTitle">Overview</div>
-              <div className="cardSubtitle">
-                Summary for the current selection
-              </div>
-            </div>
-          </div>
-
-          <div className="cardBody" style={{ lineHeight: 1.65, color: "rgba(255,255,255,0.84)" }}>
-            <p style={{ marginTop: 0 }}>{analysisText}</p>
-            <p>
-              Each card below represents one species from the current Top 20 list.
-              The sparkline shows how attention changed month by month across the selected
-              languages. This makes it easier to compare long-term patterns, peaks, and
-              relative stability between species.
-            </p>
-            <p style={{ marginBottom: 0 }}>
-              In general, species with sharp spikes may reflect temporary attention,
-              while smoother curves suggest more stable interest over time.
-            </p>
-          </div>
         </div>
 
         <div className="card" style={{ marginBottom: 16 }}>
