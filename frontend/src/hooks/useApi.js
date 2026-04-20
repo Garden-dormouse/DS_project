@@ -50,7 +50,7 @@ export const useLanguagesMapData = (filters) =>
   useQuery({
     queryKey: ["mapData", filters],
     queryFn: () => api.getLanguagesMapData(filters),
-    enabled: !!(filters?.startMonth || filters?.endMonth),
+    enabled: !!(filters?.startMonth && filters?.endMonth),
     ...CACHE_TIMES.DYNAMIC,
   });
 
@@ -116,4 +116,38 @@ export const useTimeseriesBatch = (options = {}, languageCodes = []) => {
       ...CACHE_TIMES.DYNAMIC,
     })),
   });
+};
+
+// Fetch timeseries for all species-language combinations in parallel.
+export const useSpeciesLanguageTimeseriesBatch = (
+  speciesIds = [],
+  languageCodes = [],
+  options = {}
+) => {
+  const descriptors = (speciesIds || [])
+    .filter((speciesId) => speciesId != null)
+    .flatMap((speciesId) =>
+      (languageCodes || [])
+        .filter(Boolean)
+        .map((languageCode) => ({
+          speciesId,
+          languageCode,
+          requestOptions: { ...options, speciesId, languageCode },
+        }))
+    );
+
+  const results = useQueries({
+    queries: descriptors.map(({ requestOptions, languageCode }) => ({
+      queryKey: ["timeseries", requestOptions],
+      queryFn: () => api.getTimeseries(requestOptions),
+      enabled: !!languageCode,
+      ...CACHE_TIMES.DYNAMIC,
+    })),
+  });
+
+  return results.map((result, idx) => ({
+    ...result,
+    speciesId: descriptors[idx]?.speciesId,
+    languageCode: descriptors[idx]?.languageCode,
+  }));
 };
