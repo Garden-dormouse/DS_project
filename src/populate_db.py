@@ -113,10 +113,11 @@ with SessionFactory() as session:
         get_language_range
     )
     # If no individual language range found, try macrolanguage range
-    df_languages.loc[df_languages["language_range"].isna(), "language_range"] = \
-        df_languages.loc[df_languages["language_range"].isna(), "macro_glottocode"].apply(
-            get_language_range
-        )
+    df_languages.loc[df_languages["language_range"].isna(), "language_range"] = (
+        df_languages.loc[
+            df_languages["language_range"].isna(), "macro_glottocode"
+        ].apply(get_language_range)
+    )
 
     for index, row in df_languages.iterrows():
         language_service.add_language(
@@ -215,11 +216,7 @@ with SessionFactory() as session:
 
     # Refresh materialized views after all data is loaded
     print("Refreshing materialized views...")
-    session.execute(
-        text("REFRESH MATERIALIZED VIEW mv_monthly_language_pageviews")
-    )
-    session.execute(
-        text("REFRESH MATERIALIZED VIEW mv_monthly_species_pageviews")
-    )
+    session.execute(text("REFRESH MATERIALIZED VIEW mv_monthly_language_pageviews"))
+    session.execute(text("REFRESH MATERIALIZED VIEW mv_monthly_species_pageviews"))
     session.commit()
     print("Materialized views refreshed.")

@@ -44,7 +44,12 @@ with open("./iso-639-3-macrolanguages.tab", encoding="utf8") as f:
 
 
 ### ANIMAL TYPES TO PROCESS
-animal_types = ["reptile", "bird", "mammal"]
+pageview_files = [
+    f
+    for f in os.listdir("./")
+    if f.startswith("pageview") and f.endswith("monthly.pkl")
+]
+animal_types = [f.split("_")[1] for f in pageview_files]
 
 # Create time table once (same for all animal types)
 print("Creating table 'time'")
