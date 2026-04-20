@@ -139,9 +139,15 @@ function mergeTimeseriesResults(results, months) {
 export default function App() {
   // React Query hooks - handle caching automatically
   const { data: languages = [] } = useLanguages();
-  const { data: speciesList = [] } = useSpecies();
+  const { data: speciesData = [] } = useSpecies();
   const { data: availableMonths = [] } = useAvailableMonths();
   const { data: speciesTypes = [] } = useSpeciesTypes();
+
+  const speciesList = useMemo(() => {
+    if (Array.isArray(speciesData)) return speciesData;
+    if (Array.isArray(speciesData?.items)) return speciesData.items;
+    return [];
+  }, [speciesData]);
 
   const [viewMode, setViewMode] = useState("language");
 
@@ -195,8 +201,9 @@ export default function App() {
 
   const selectedSpeciesObject = useMemo(() => {
     if (selectedSpeciesId == null) return null;
+    if (selectedSpecies?.id === selectedSpeciesId) return selectedSpecies;
     return speciesList.find((species) => species.id === selectedSpeciesId) || null;
-  }, [speciesList, selectedSpeciesId]);
+  }, [speciesList, selectedSpeciesId, selectedSpecies]);
 
   const activeTypeColor = useMemo(() => {
     if (viewMode === "species") {
