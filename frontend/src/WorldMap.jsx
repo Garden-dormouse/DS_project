@@ -200,9 +200,11 @@ export default function WorldMap({
           <div style={{ color: "rgba(255,255,255,0.60)" }}>
             ISO3: <span className="mono">{hover.iso3 ?? "—"}</span>
           </div>
-          <div style={{ color: "rgba(255,255,255,0.60)", marginTop: 6 }}>
-            Total pageviews: <span className="mono">{formatNumber(hover.value)}</span>
-          </div>
+          {hover.value > 0 && (
+            <div style={{ color: "rgba(255,255,255,0.60)", marginTop: 6 }}>
+              Total pageviews: <span className="mono">{formatNumber(hover.value)}</span>
+            </div>
+          )}
         </div>
       )}
     </div>

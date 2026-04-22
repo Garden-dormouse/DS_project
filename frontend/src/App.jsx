@@ -492,10 +492,6 @@ export default function App() {
 
   const topLanguageTimeseriesLoading = speciesAggregateTimeseriesLoading;
 
-  const handleCountryClick = (iso3) => {
-    setSelectedIso3(iso3);
-  };
-
   const handleStartMonthChange = (value) => {
     setStartMonth(value);
     if (effectiveEndMonth && value && value > effectiveEndMonth) {
@@ -642,9 +638,9 @@ export default function App() {
 
           <section className="panel panel--center">
             <MapPanel
-              selectedIso3={selectedIso3ForMap}
+              selectedIso3={null}
               languageRange={viewMode === "language" ? languageRange : speciesModeLanguageRange}
-              onCountryClick={handleCountryClick}
+              onCountryClick={() => {}}
               mapIntensityByIso3={mapIntensityByIso3}
               geojsonUrl="/data/world.geojson"
               startMonth={effectiveStartMonth}

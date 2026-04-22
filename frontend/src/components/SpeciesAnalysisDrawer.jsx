@@ -15,10 +15,6 @@ export default function SpeciesAnalysisDrawer({
 }) {
   if (!isOpen) return null;
 
-  const analysisText = species
-    ? `${species.latin_name} is currently selected. The first chart shows the overall monthly trend aggregated across the Top 20 languages for this species. The cards below then break this down into language-specific timeseries so you can compare which languages are stable, which spike, and which stay relatively small.`
-    : `Select a species first to open the analysis drawer.`;
-
   return (
     <div
       onClick={onClose}
@@ -77,30 +73,6 @@ export default function SpeciesAnalysisDrawer({
           >
             Close
           </button>
-        </div>
-
-        <div className="card" style={{ marginBottom: 16 }}>
-          <div className="cardHeader">
-            <div>
-              <div className="cardTitle">Overview</div>
-              <div className="cardSubtitle">
-                Summary for the current species selection
-              </div>
-            </div>
-          </div>
-
-          <div className="cardBody" style={{ lineHeight: 1.65, color: "rgba(255,255,255,0.84)" }}>
-            <p style={{ marginTop: 0 }}>{analysisText}</p>
-            <p>
-              The overall trend is useful when you want to understand whether the species is
-              steadily popular across languages or whether its visibility is mostly driven by a few
-              standout languages.
-            </p>
-            <p style={{ marginBottom: 0 }}>
-              The language-level cards below make comparison easier by showing one sparkline per
-              language in the Top 20 ranking.
-            </p>
-          </div>
         </div>
 
         <div className="card" style={{ marginBottom: 16 }}>
