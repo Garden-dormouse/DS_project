@@ -513,6 +513,7 @@ export default function App() {
   };
 
   const handleSelectSpeciesOption = (species) => {
+    setSelectedSpecies(species || null);
     setSelectedSpeciesId(species?.id ?? null);
     setSelectedLanguageForSpeciesView(null);
   };
