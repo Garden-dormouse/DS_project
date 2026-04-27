@@ -1,266 +1,181 @@
 import React, { useMemo } from "react";
 
 export default function MiniSparkline({ points, color = "#60A5FA" }) {
-  const {
-    d,
-    min,
-    max,
-    firstLabel,
-    lastLabel,
-    axisLeft,
-    axisBottom,
-    horizontalGuides,
-    verticalGuides,
-    xTicks,
-    yTicks,
-  } = useMemo(() => {
+  const W = 620;
+  const H = 170;
+  const padLeft = 44;
+  const padRight = 18;
+  const padTop = 14;
+  const padBottom = 38;
+
+  const { d, min, max, ticks, yTicks } = useMemo(() => {
     if (!points?.length) {
-      return {
-        d: "",
-        min: 0,
-        max: 0,
-        firstLabel: "",
-        lastLabel: "",
-        axisLeft: 44,
-        axisBottom: 142,
-        horizontalGuides: [],
-        verticalGuides: [],
-        xTicks: [],
-        yTicks: [],
-      };
+      return { d: "", min: 0, max: 0, ticks: [], yTicks: [] };
     }
 
-    const vals = points.map((p) => Number(p.value) || 0);
+    const vals = points.map((p) => Number(p.value || 0));
     const min = Math.min(...vals);
     const max = Math.max(...vals);
 
-    const W = 520;
-    const H = 160;
-
-    const axisLeft = 44;
-    const axisRight = 12;
-    const axisTop = 10;
-    const axisBottom = 142;
-
-    const plotW = W - axisLeft - axisRight;
-    const plotH = axisBottom - axisTop;
+    const plotW = W - padLeft - padRight;
+    const plotH = H - padTop - padBottom;
 
     const scaleX = (i) => {
-      if (points.length === 1) return axisLeft + plotW / 2;
-      return axisLeft + (i * plotW) / (points.length - 1);
+      if (points.length === 1) return padLeft + plotW / 2;
+      return padLeft + (i * plotW) / (points.length - 1);
     };
 
     const scaleY = (v) => {
-      if (max === min) return axisTop + plotH / 2;
+      if (max === min) return padTop + plotH / 2;
       const t = (v - min) / (max - min);
-      return axisTop + (1 - t) * plotH;
+      return padTop + (1 - t) * plotH;
     };
 
     let d = "";
     points.forEach((p, i) => {
       const x = scaleX(i);
-      const y = scaleY(Number(p.value) || 0);
+      const y = scaleY(Number(p.value || 0));
       d += i === 0 ? `M ${x} ${y}` : ` L ${x} ${y}`;
     });
 
-    const yTickValues =
-      max === min
-        ? [min]
-        : [max, min + (max - min) * 0.5, min];
+    const tickCount = Math.min(12, points.length);
+    const used = new Set();
 
-    const yTicks = yTickValues.map((value) => ({
-      value,
-      y: scaleY(value),
+    const ticks = Array.from({ length: tickCount }, (_, i) => {
+      const index =
+        tickCount === 1
+          ? 0
+          : Math.round((i * (points.length - 1)) / (tickCount - 1));
+
+      if (used.has(index)) return null;
+      used.add(index);
+
+      return {
+        index,
+        x: scaleX(index),
+        label: points[index]?.label || "",
+      };
+    }).filter(Boolean);
+
+    const yTicks = [min, (min + max) / 2, max].map((v) => ({
+      value: v,
+      y: scaleY(v),
     }));
 
-    const horizontalGuides = yTicks.map((tick) => ({
-      y: tick.y,
-    }));
-
-    const xTicks = [];
-    if (points.length === 1) {
-      xTicks.push({
-        x: scaleX(0),
-        label: points[0]?.label || "",
-      });
-    } else {
-      xTicks.push({
-        x: scaleX(0),
-        label: points[0]?.label || "",
-      });
-      xTicks.push({
-        x: scaleX(points.length - 1),
-        label: points[points.length - 1]?.label || "",
-      });
-    }
-
-    const verticalGuides = xTicks.map((tick) => ({
-      x: tick.x,
-    }));
-
-    return {
-      d,
-      min,
-      max,
-      firstLabel: points[0]?.label || "",
-      lastLabel: points[points.length - 1]?.label || "",
-      axisLeft,
-      axisBottom,
-      horizontalGuides,
-      verticalGuides,
-      xTicks,
-      yTicks,
-    };
+    return { d, min, max, ticks, yTicks };
   }, [points]);
+
+  if (!points?.length) {
+    return <div className="note">No timeseries data.</div>;
+  }
 
   return (
     <div style={{ width: "100%" }}>
-      <div
-        style={{
-          marginBottom: 6,
-          display: "flex",
-          justifyContent: "space-between",
-          fontSize: 11,
-          color: "rgba(255,255,255,0.55)",
-        }}
-      >
-        <span>X: Month</span>
-        <span>Y: Pageviews</span>
-      </div>
-
       <svg
-        viewBox="0 0 520 160"
+        viewBox={`0 0 ${W} ${H}`}
         width="100%"
-        height="180"
-        style={{ display: "block", overflow: "visible" }}
+        height="190"
+        style={{ display: "block" }}
       >
-        {/* horizontal guide lines */}
-        {horizontalGuides.map((line, idx) => (
-          <line
-            key={`h-${idx}`}
-            x1={44}
-            y1={line.y}
-            x2={508}
-            y2={line.y}
-            stroke="rgba(255,255,255,0.08)"
-            strokeWidth="1"
-            strokeDasharray="4 4"
-          />
-        ))}
-
-        {/* vertical guide lines */}
-        {verticalGuides.map((line, idx) => (
-          <line
-            key={`v-${idx}`}
-            x1={line.x}
-            y1={10}
-            x2={line.x}
-            y2={142}
-            stroke="rgba(255,255,255,0.06)"
-            strokeWidth="1"
-            strokeDasharray="4 4"
-          />
-        ))}
-
-        {/* axes */}
-        <line
-          x1={44}
-          y1={10}
-          x2={44}
-          y2={142}
-          stroke="rgba(255,255,255,0.35)"
-          strokeWidth="1.2"
-        />
-        <line
-          x1={44}
-          y1={142}
-          x2={508}
-          y2={142}
-          stroke="rgba(255,255,255,0.35)"
-          strokeWidth="1.2"
-        />
-
-        {/* y tick labels */}
-        {yTicks.map((tick, idx) => (
-          <g key={`yt-${idx}`}>
+        {/* horizontal grid lines */}
+        {yTicks.map((t, i) => (
+          <g key={i}>
             <line
-              x1={40}
-              y1={tick.y}
-              x2={44}
-              y2={tick.y}
-              stroke="rgba(255,255,255,0.45)"
+              x1={padLeft}
+              x2={W - padRight}
+              y1={t.y}
+              y2={t.y}
+              stroke="rgba(255,255,255,0.08)"
               strokeWidth="1"
             />
             <text
-              x={36}
-              y={tick.y + 4}
+              x={padLeft - 8}
+              y={t.y + 4}
               textAnchor="end"
               fontSize="10"
-              fill="rgba(255,255,255,0.65)"
+              fill="rgba(255,255,255,0.45)"
             >
-              {formatCompactNumber(tick.value)}
+              {formatShortNumber(t.value)}
             </text>
           </g>
         ))}
 
-        {/* x tick labels */}
-        {xTicks.map((tick, idx) => (
-          <g key={`xt-${idx}`}>
+        {/* x axis */}
+        <line
+          x1={padLeft}
+          x2={W - padRight}
+          y1={H - padBottom}
+          y2={H - padBottom}
+          stroke="rgba(255,255,255,0.12)"
+          strokeWidth="1"
+        />
+
+        {/* x axis ticks */}
+        {ticks.map((t) => (
+          <g key={t.index}>
             <line
-              x1={tick.x}
-              y1={142}
-              x2={tick.x}
-              y2={146}
-              stroke="rgba(255,255,255,0.45)"
+              x1={t.x}
+              x2={t.x}
+              y1={H - padBottom}
+              y2={H - padBottom + 5}
+              stroke="rgba(255,255,255,0.22)"
               strokeWidth="1"
             />
             <text
-              x={tick.x}
-              y={157}
-              textAnchor={idx === 0 ? "start" : "end"}
+              x={t.x}
+              y={H - 14}
+              textAnchor="middle"
               fontSize="10"
-              fill="rgba(255,255,255,0.65)"
+              fill="rgba(255,255,255,0.52)"
             >
-              {tick.label}
+              {t.label}
             </text>
           </g>
         ))}
 
-        {/* line glow */}
-        <path d={d} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="6" />
-        {/* main line */}
-        <path d={d} fill="none" stroke={color} strokeWidth="2.5" />
+        {/* line */}
+        <path
+          d={d}
+          fill="none"
+          stroke="rgba(255,255,255,0.16)"
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d={d}
+          fill="none"
+          stroke={color}
+          strokeWidth="2.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
 
       <div
         style={{
           display: "flex",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
           fontSize: 12,
           color: "rgba(255,255,255,0.55)",
-          marginTop: 2,
         }}
       >
-        <span>
-          min: {formatNumber(min)} · max: {formatNumber(max)}
-        </span>
+        <span>min: {formatNumber(min)}</span>
+        <span>max: {formatNumber(max)}</span>
       </div>
     </div>
   );
 }
 
 function formatNumber(n) {
-  return new Intl.NumberFormat().format(Math.round(Number(n) || 0));
+  return new Intl.NumberFormat().format(Math.round(n || 0));
 }
 
-function formatCompactNumber(n) {
-  const value = Number(n) || 0;
+function formatShortNumber(n) {
+  const value = Number(n || 0);
 
-  if (value >= 1000000) {
-    return `${(value / 1000000).toFixed(value >= 10000000 ? 0 : 1)}M`;
-  }
-  if (value >= 1000) {
-    return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k`;
-  }
-  return `${Math.round(value)}`;
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K`;
+
+  return String(Math.round(value));
 }

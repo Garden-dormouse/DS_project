@@ -30,9 +30,9 @@ export default function SpeciesAnalysisDrawer({
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: "min(50vw, 760px)",
-          minWidth: "420px",
-          height: "100vh",
+          width: "min(68vw, 1100px)",
+          minWidth: "620px",
+          maxWidth: "calc(100vw - 48px)",
           background: "linear-gradient(180deg, rgba(17,24,39,0.98), rgba(10,14,24,0.98))",
           borderLeft: "1px solid rgba(255,255,255,0.08)",
           boxShadow: "-20px 0 60px rgba(0,0,0,0.35)",
