@@ -26,7 +26,7 @@ export const CACHE_TIMES = {
   },
   // Dynamic data: top species, timeseries, map data
   DYNAMIC: {
-    staleTime: 1000 * 30, // 30 seconds
-    gcTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 2, // 2 minutes
+    gcTime: 1000 * 60 * 15, // 15 minutes
   },
 };

@@ -406,9 +406,7 @@ export default function App() {
       endMonth: effectiveEndMonth,
       speciesType: selectedSpeciesType,
     },
-    viewMode === "species" &&
-      !selectedSpeciesLanguageCode &&
-      topLanguages.length > 0
+    viewMode === "species" && topLanguages.length > 0
       ? topLanguages.map((row) => row.code).filter(Boolean)
       : []
   );
@@ -457,10 +455,12 @@ export default function App() {
   ]);
 
   const canBuildSpeciesAggregate =
-    hasSpeciesSelection && !selectedSpeciesLanguageCode && topLanguages.length > 0;
+    hasSpeciesSelection && topLanguages.length > 0;
 
   const speciesAggregateTimeseriesLoading =
-    canBuildSpeciesAggregate && speciesLanguageTimeseriesQueries.some((q) => q.isPending);
+    canBuildSpeciesAggregate &&
+    speciesLanguageTimeseriesQueries.length > 0 &&
+    speciesLanguageTimeseriesQueries.some((q) => q.isPending);
 
   const speciesAggregateTimeseries = useMemo(() => {
     if (!canBuildSpeciesAggregate || speciesAggregateTimeseriesLoading) return [];

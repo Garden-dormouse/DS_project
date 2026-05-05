@@ -48,7 +48,13 @@ export const useLanguageRange = (languageCode) =>
 // Dynamic data (30 seconds cache)
 export const useLanguagesMapData = (filters) =>
   useQuery({
-    queryKey: ["mapData", filters],
+    queryKey: [
+      "mapData",
+      filters?.startMonth,
+      filters?.endMonth,
+      filters?.speciesType,
+      filters?.speciesId,
+    ],
     queryFn: () => api.getLanguagesMapData(filters),
     enabled: !!(filters?.startMonth && filters?.endMonth),
     ...CACHE_TIMES.DYNAMIC,
@@ -56,7 +62,14 @@ export const useLanguagesMapData = (filters) =>
 
 export const useTopSpeciesByLanguage = (languageCode, options) =>
   useQuery({
-    queryKey: ["topSpecies", languageCode, options],
+    queryKey: [
+      "topSpecies",
+      languageCode,
+      options?.limit,
+      options?.startMonth,
+      options?.endMonth,
+      options?.speciesType,
+    ],
     queryFn: () => api.getTopSpeciesByLanguage(languageCode, options),
     enabled: !!languageCode,
     ...CACHE_TIMES.DYNAMIC,
@@ -64,7 +77,14 @@ export const useTopSpeciesByLanguage = (languageCode, options) =>
 
 export const useTopLanguagesBySpecies = (options) =>
   useQuery({
-    queryKey: ["topLanguages", options],
+    queryKey: [
+      "topLanguages",
+      options?.speciesId,
+      options?.limit,
+      options?.startMonth,
+      options?.endMonth,
+      options?.speciesType,
+    ],
     queryFn: () => api.getTopLanguagesBySpecies(options),
     enabled: options?.speciesId != null,
     ...CACHE_TIMES.DYNAMIC,
@@ -72,7 +92,14 @@ export const useTopLanguagesBySpecies = (options) =>
 
 export const useTimeseries = (options) =>
   useQuery({
-    queryKey: ["timeseries", options],
+    queryKey: [
+      "timeseries",
+      options?.languageCode,
+      options?.speciesId,
+      options?.startMonth,
+      options?.endMonth,
+      options?.speciesType,
+    ],
     queryFn: () => api.getTimeseries(options),
     enabled: !!options?.languageCode,
     ...CACHE_TIMES.DYNAMIC,
@@ -86,7 +113,14 @@ export const useTimeseries = (options) =>
 export const useTopSpeciesByLanguageBatch = (languageCodes = [], options = {}) => {
   return useQueries({
     queries: (languageCodes || []).map((languageCode) => ({
-      queryKey: ["topSpecies", languageCode, options],
+      queryKey: [
+        "topSpecies",
+        languageCode,
+        options?.limit,
+        options?.startMonth,
+        options?.endMonth,
+        options?.speciesType,
+      ],
       queryFn: () => api.getTopSpeciesByLanguage(languageCode, options),
       enabled: !!languageCode,
       ...CACHE_TIMES.DYNAMIC,
@@ -110,7 +144,14 @@ export const useLanguageRangeBatch = (languageCodes = []) => {
 export const useTimeseriesBatch = (options = {}, languageCodes = []) => {
   return useQueries({
     queries: (languageCodes || []).map((languageCode) => ({
-      queryKey: ["timeseries", { ...options, languageCode }],
+      queryKey: [
+        "timeseries",
+        languageCode,
+        options?.speciesId,
+        options?.startMonth,
+        options?.endMonth,
+        options?.speciesType,
+      ],
       queryFn: () => api.getTimeseries({ ...options, languageCode }),
       enabled: !!languageCode,
       ...CACHE_TIMES.DYNAMIC,
@@ -137,8 +178,15 @@ export const useSpeciesLanguageTimeseriesBatch = (
     );
 
   const results = useQueries({
-    queries: descriptors.map(({ requestOptions, languageCode }) => ({
-      queryKey: ["timeseries", requestOptions],
+    queries: descriptors.map(({ requestOptions, languageCode, speciesId }) => ({
+      queryKey: [
+        "timeseries",
+        languageCode,
+        speciesId,
+        requestOptions?.startMonth,
+        requestOptions?.endMonth,
+        requestOptions?.speciesType,
+      ],
       queryFn: () => api.getTimeseries(requestOptions),
       enabled: !!languageCode,
       ...CACHE_TIMES.DYNAMIC,
