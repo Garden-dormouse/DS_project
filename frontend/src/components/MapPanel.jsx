@@ -3,9 +3,7 @@ import "./panel.css";
 import WorldMap from "../WorldMap.jsx";
 
 export default function MapPanel({
-  selectedIso3,
   languageRange,
-  onCountryClick,
   mapIntensityByIso3,
   geojsonUrl,
   startMonth,
@@ -24,11 +22,7 @@ export default function MapPanel({
       <div className="panelHeader">
         <div>
           <div className="panelTitle">Language Activity Map</div>
-          <div className="panelSubtitle">
-            {startMonth && endMonth
-              ? `Viewing: ${startMonth} → ${endMonth}`
-              : "Viewing: All months"}
-          </div>
+          <div className="panelSubtitle">Interactive world map showing species pageview intensity by region</div>
         </div>
 
         <div className="rightPills" style={{ gap: 8, flexWrap: "wrap" }}>
@@ -65,10 +59,6 @@ export default function MapPanel({
             Reset
           </button>
 
-          <div className="miniPill" style={{ alignSelf: "end" }}>
-            Selected: <span className="mono">{selectedIso3 ?? "none"}</span>
-          </div>
-
           <div
             className="miniPill"
             style={{
@@ -99,8 +89,6 @@ export default function MapPanel({
       <div className="panelBody panelBody--map">
         <WorldMap
           geojsonUrl={geojsonUrl}
-          onCountryClick={onCountryClick}
-          selectedIso3={selectedIso3}
           languageRange={languageRange}
           valueByIso3={mapIntensityByIso3}
           accentColor={accentColor}

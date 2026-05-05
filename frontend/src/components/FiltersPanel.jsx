@@ -136,16 +136,6 @@ export default function FiltersPanel({
               );
             })}
           </div>
-
-          <div className="hint" style={{ marginTop: 10 }}>
-            {selectedLanguageObjects.length > 0
-              ? `Selected ${selectedLanguageObjects.length} language(s)`
-              : "No language selected"}
-          </div>
-
-          <div className="hint" style={{ marginTop: 6 }}>
-            Showing {filteredLanguages.length} / {languages.length} languages
-          </div>
         </div>
 
         <div className="field">
@@ -162,10 +152,6 @@ export default function FiltersPanel({
               </option>
             ))}
           </select>
-
-          <div className="hint" style={{ marginTop: 6 }}>
-            {selectedSpeciesType ? `Selected type: ${selectedSpeciesType}` : "No species type filter"}
-          </div>
         </div>
       </div>
     </div>

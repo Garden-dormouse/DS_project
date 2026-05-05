@@ -23,113 +23,21 @@ import {
   useSpeciesLanguageTimeseriesBatch,
 } from "./hooks/useApi.js";
 
-const TYPE_COLORS = {
-  mammal: "#60A5FA",
-  bird: "#34D399",
-  reptile: "#F59E0B",
-};
-
-function getTypeColor(speciesType) {
-  return TYPE_COLORS[speciesType] || "#60A5FA";
-}
-
-function sortMonths(months) {
-  return [...months].sort((a, b) => a.localeCompare(b));
-}
-
-function getMonthRange(availableMonths, startMonth, endMonth) {
-  const sorted = sortMonths(availableMonths);
-  if (!sorted.length) return [];
-
-  if (!startMonth && !endMonth) return sorted;
-
-  const safeStart = startMonth || endMonth;
-  const safeEnd = endMonth || startMonth;
-
-  if (!safeStart || !safeEnd) return sorted;
-
-  const [from, to] =
-    safeStart.localeCompare(safeEnd) <= 0
-      ? [safeStart, safeEnd]
-      : [safeEnd, safeStart];
-
-  return sorted.filter((month) => month >= from && month <= to);
-}
-
-function formatRangeLabel(monthsInRange, availableMonths) {
-  if (!monthsInRange.length) return "All Months";
-  if (monthsInRange.length === availableMonths.length) return "All Months";
-  if (monthsInRange.length === 1) return monthsInRange[0];
-  return `${monthsInRange[0]} → ${monthsInRange[monthsInRange.length - 1]}`;
-}
-
-function normalizeRangeFeatureCollection(input) {
-  if (!input) return null;
-  if (input.type === "FeatureCollection" && Array.isArray(input.features)) return input;
-  if (input.type === "Feature") {
-    return { type: "FeatureCollection", features: [input] };
-  }
-  if (Array.isArray(input)) {
-    return { type: "FeatureCollection", features: input.filter(Boolean) };
-  }
-  return null;
-}
-
-function mergeLanguageRanges(ranges) {
-  const features = ranges
-    .map(normalizeRangeFeatureCollection)
-    .filter(Boolean)
-    .flatMap((fc) => fc.features || []);
-
-  if (!features.length) return null;
-
-  return {
-    type: "FeatureCollection",
-    features,
-  };
-}
-
-function mergeTimeseriesResults(results, months) {
-  const merged = new Map();
-
-  for (const month of months || []) {
-    merged.set(month, 0);
-  }
-
-  for (const rows of results) {
-    for (const row of Array.isArray(rows) ? rows : []) {
-      const month = row.month;
-      const value = Number(row.pageviews || 0);
-      merged.set(month, (merged.get(month) || 0) + value);
-    }
-  }
-
-  return Array.from(merged.entries())
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([month, pageviews]) => ({ month, pageviews }));
-}
-
-function mergeTopSpeciesResults(results, limit) {
-  const speciesMap = new Map();
-
-  for (const rows of results) {
-    for (const row of Array.isArray(rows) ? rows : []) {
-      if (row.id != null) {
-        const existing = speciesMap.get(row.id);
-        if (!existing || row.pageviews > existing.pageviews) {
-          speciesMap.set(row.id, row);
-        }
-      }
-    }
-  }
-
-  return Array.from(speciesMap.values())
-    .sort((a, b) => (b.pageviews || 0) - (a.pageviews || 0))
-    .slice(0, limit);
-}
+import { getTypeColor } from "./utils/constants.js";
+import {
+  sortMonths,
+  getMonthRange,
+  formatRangeLabel,
+  mergeLanguageRanges,
+  mergeTimeseriesResults,
+  mergeTopSpeciesResults,
+} from "./utils/dataTransform.js";
 
 export default function App() {
-  // React Query hooks - handle caching automatically
+  // DATA FETCHING LAYER
+  // React Query hooks automatically handle caching, deduplication, and state
+
+  // Static data with 24-hour cache
   const { data: languages = [] } = useLanguages();
   const { data: speciesData = [] } = useSpecies();
   const { data: availableMonths = [] } = useAvailableMonths();
@@ -141,24 +49,23 @@ export default function App() {
     return [];
   }, [speciesData]);
 
-  const [viewMode, setViewMode] = useState("language");
+  // STATE MANAGEMENT
+  // Core UI state split into language view and species view modes
 
-  const [selectedIso3, setSelectedIso3] = useState(null);
+  const [viewMode, setViewMode] = useState("language");
   const [selectedLanguages, setSelectedLanguages] = useState([]);
   const [selectedSpeciesType, setSelectedSpeciesType] = useState(null);
-
   const [selectedSpeciesId, setSelectedSpeciesId] = useState(null);
   const [selectedLanguageForSpeciesView, setSelectedLanguageForSpeciesView] = useState(null);
-
   const [startMonth, setStartMonth] = useState(null);
   const [endMonth, setEndMonth] = useState(null);
-
   const [selectedSpecies, setSelectedSpecies] = useState(null);
-
   const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
   const [analysisSpecies, setAnalysisSpecies] = useState(null);
-
   const [isSpeciesAnalysisOpen, setIsSpeciesAnalysisOpen] = useState(false);
+
+  // TIME RANGE COMPUTATION
+  // Handles month range logic with fallbacks to full date range
 
   const sortedAvailableMonths = useMemo(
     () => sortMonths(availableMonths),
@@ -227,13 +134,12 @@ export default function App() {
   const { data: mapData } = useLanguagesMapData(mapFilters);
   const mapIntensityByIso3 = mapData || {};
 
+  // Language view: only fetch when languages are selected
   const hasLanguageSelection =
     viewMode === "language" &&
     selectedLanguages.length > 0 &&
     !!effectiveStartMonth &&
     !!effectiveEndMonth;
-
-  // Batch fetch top species for all selected languages (cached per language)
   const topSpeciesQueries = useTopSpeciesByLanguageBatch(
     hasLanguageSelection ? selectedLanguages : [],
     {
@@ -272,8 +178,7 @@ export default function App() {
     languageRangeQueries,
   ]);
 
-  const selectedIso3ForMap = hasLanguageSelection ? selectedIso3 : null;
-
+  // Species view: check if a species is in the top 20 for language selection
   const selectedSpeciesInTop = useMemo(() => {
     if (!selectedSpecies) return null;
     return (
@@ -360,6 +265,10 @@ export default function App() {
     !!effectiveStartMonth &&
     !!effectiveEndMonth;
 
+  // ============================================================================
+  // SPECIES VIEW - TOP LANGUAGES QUERY
+  // Fetches top 20 languages for the selected species
+  // ============================================================================
   const topLanguagesBySpeciesQuery = useTopLanguagesBySpecies({
     speciesId: hasSpeciesSelection ? selectedSpeciesId : null,
     limit: 20,
@@ -491,6 +400,10 @@ export default function App() {
   ]);
 
   const topLanguageTimeseriesLoading = speciesAggregateTimeseriesLoading;
+
+  // ============================================================================
+  // EVENT HANDLERS
+  // ============================================================================
 
   const handleStartMonthChange = (value) => {
     setStartMonth(value);
@@ -639,9 +552,7 @@ export default function App() {
 
           <section className="panel panel--center">
             <MapPanel
-              selectedIso3={null}
               languageRange={viewMode === "language" ? languageRange : speciesModeLanguageRange}
-              onCountryClick={() => {}}
               mapIntensityByIso3={mapIntensityByIso3}
               geojsonUrl="/data/world.geojson"
               startMonth={effectiveStartMonth}

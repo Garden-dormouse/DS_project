@@ -3,8 +3,16 @@ import { api } from "../services/api.js";
 import { CACHE_TIMES } from "../config/queryClient.js";
 
 /**
- * Custom React Query hooks for all API calls
- * Automatically handles caching, deduplication, and state management
+ * Custom React Query hooks for all API calls.
+ * Automatically handles caching (2min), deduplication, and state management.
+ *
+ * Caching strategy:
+ * - STATIC queries (24hr): Species types, languages - rarely change
+ * - MEDIUM queries (5min): Available months, language ranges - semi-stable
+ * - DYNAMIC queries (2min, 15min gc): Species/timeseries - frequently changing
+ *
+ * Batch queries reuse the same cache keys as single queries, so selecting/deselecting
+ * languages/species reuses cached data instead of refetching.
  */
 
 // Static data (24 hours cache)
@@ -106,7 +114,11 @@ export const useTimeseries = (options) =>
   });
 
 /**
- * Batch query hooks using useQueries for parallel execution with individual caching
+ * Batch query hooks using useQueries for parallel execution with individual caching.
+ * 
+ * These hooks execute multiple queries in parallel, each with its own cache key.
+ * This enables fine-grained caching: when a user selects/deselects items,
+ * previously cached queries are reused instead of refetched.
  */
 
 // Fetch top species for multiple languages in parallel (each individually cached)

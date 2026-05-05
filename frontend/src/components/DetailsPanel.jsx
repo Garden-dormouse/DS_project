@@ -1,15 +1,6 @@
 import "./panel.css";
 import MiniSparkline from "./MiniSparkline.jsx";
-
-const TYPE_COLORS = {
-  mammal: "#60A5FA",
-  bird: "#34D399",
-  reptile: "#F59E0B",
-};
-
-function getSpeciesColor(type, fallback = "#60A5FA") {
-  return TYPE_COLORS[type] || fallback;
-}
+import { getTypeColor } from "../utils/constants.js";
 
 export default function DetailsPanel({
   selectedLanguages,
@@ -57,19 +48,10 @@ export default function DetailsPanel({
           <div className="panelTitle">Top Species by Language</div>
           <div className="panelSubtitle">
             {languageLabel ? (
-              <>
-                Languages: <span className="mono">{languageLabel}</span>
-              </>
+              <>Click a species to view its timeseries</>
             ) : (
               <>Select one or more languages</>
             )}
-          </div>
-          <div className="panelSubtitle" style={{ marginTop: 6 }}>
-            {selectedRangeLabel
-              ? `Range: ${selectedRangeLabel}`
-              : startMonth && endMonth
-              ? `Range: ${startMonth} → ${endMonth}`
-              : "Range: All Months"}
           </div>
         </div>
       </div>
@@ -122,7 +104,7 @@ export default function DetailsPanel({
                 >
                   <ul className="list">
                     {topSpecies.map((row, idx) => {
-                      const speciesColor = getSpeciesColor(row.type, accentColor);
+                      const speciesColor = getTypeColor(row.type, accentColor);
 
                       const isSelected =
                         selectedSpecies &&
@@ -232,7 +214,7 @@ export default function DetailsPanel({
                     <MiniSparkline
                       color={
                         selectedSpecies?.type
-                          ? getSpeciesColor(selectedSpecies.type, accentColor)
+                          ? getTypeColor(selectedSpecies.type, accentColor)
                           : accentColor
                       }
                       points={timeseries.map((row) => ({
@@ -240,9 +222,6 @@ export default function DetailsPanel({
                         value: row.pageviews,
                       }))}
                     />
-                    <div className="hint" style={{ marginTop: 8 }}>
-                      {timeseries[0]?.month} → {timeseries[timeseries.length - 1]?.month}
-                    </div>
                   </>
                 )}
               </div>

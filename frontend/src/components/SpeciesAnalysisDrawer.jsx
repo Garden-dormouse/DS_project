@@ -99,10 +99,6 @@ export default function SpeciesAnalysisDrawer({
                     value: row.pageviews,
                   }))}
                 />
-                <div className="hint" style={{ marginTop: 8 }}>
-                  {aggregateTimeseries[0]?.month} →{" "}
-                  {aggregateTimeseries[aggregateTimeseries.length - 1]?.month}
-                </div>
               </>
             )}
           </div>
@@ -158,10 +154,6 @@ export default function SpeciesAnalysisDrawer({
                               value: row.pageviews,
                             }))}
                           />
-                          <div className="hint" style={{ marginTop: 8 }}>
-                            {item.timeseries[0]?.month} →{" "}
-                            {item.timeseries[item.timeseries.length - 1]?.month}
-                          </div>
                         </>
                       )}
                     </div>

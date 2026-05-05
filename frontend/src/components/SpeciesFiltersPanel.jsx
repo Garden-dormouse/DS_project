@@ -1,8 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import "./panel.css";
 import { api } from "../services/api.js";
-
-const PAGE_SIZE = 50;
+import { PAGE_SIZE } from "../utils/constants.js";
 
 export default function SpeciesFiltersPanel({
   selectedSpecies,
@@ -145,13 +144,20 @@ export default function SpeciesFiltersPanel({
               </option>
             ))}
           </select>
-
-          <div className="hint" style={{ marginTop: 6 }}>
-            {selectedSpeciesType
-              ? `Selected type: ${selectedSpeciesType}`
-              : "No species type filter"}
-          </div>
         </div>
+
+        {selectedSpecies && (
+          <div className="field">
+            <button
+              type="button"
+              className="btn"
+              style={{ width: "100%", background: "rgba(251, 113, 133, 0.1)", borderColor: "rgba(251, 113, 133, 0.3)" }}
+              onClick={() => onSelectSpecies(null)}
+            >
+              Unselect Species
+            </button>
+          </div>
+        )}
 
         <div className="field">
           <label className="label">Select Species</label>
@@ -226,22 +232,6 @@ export default function SpeciesFiltersPanel({
               {error}
             </div>
           )}
-
-          <div className="hint" style={{ marginTop: 10 }}>
-            {selectedSpecies ? (
-              <>
-                Selected: <span className="mono">{selectedSpecies.latin_name}</span>
-              </>
-            ) : (
-              "No species selected"
-            )}
-          </div>
-
-          <div className="hint" style={{ marginTop: 6 }}>
-            {loading && visibleSpecies.length > 0
-              ? `Loaded ${visibleSpecies.length} species so far`
-              : `Loaded ${visibleSpecies.length} species${hasMore ? " so far" : ""}`}
-          </div>
         </div>
       </div>
     </div>

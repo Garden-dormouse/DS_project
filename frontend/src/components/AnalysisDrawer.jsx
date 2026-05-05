@@ -124,9 +124,6 @@ export default function AnalysisDrawer({
                     value: row.pageviews,
                   }))}
                 />
-                <div className="hint" style={{ marginTop: 10 }}>
-                  {timeseries[0]?.month} → {timeseries[timeseries.length - 1]?.month}
-                </div>
               </>
             )}
           </div>
@@ -182,10 +179,7 @@ export default function AnalysisDrawer({
                               value: row.pageviews,
                             }))}
                           />
-                          <div className="hint" style={{ marginTop: 8 }}>
-                            {item.timeseries[0]?.month} →{" "}
-                            {item.timeseries[item.timeseries.length - 1]?.month}
-                          </div>
+
                         </>
                       )}
                     </div>

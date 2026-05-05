@@ -37,15 +37,10 @@ export default function SpeciesLanguagePanel({
           <div className="panelTitle">Top Languages by Species</div>
           <div className="panelSubtitle">
             {selectedSpecies ? (
-              <>
-                Species: <span className="mono">{selectedSpecies.latin_name}</span>
-              </>
+              <>Click a language to view its timeseries</>
             ) : (
               <>Select one species</>
             )}
-          </div>
-          <div className="panelSubtitle" style={{ marginTop: 6 }}>
-            {selectedRangeLabel ? `Range: ${selectedRangeLabel}` : "Range: All Months"}
           </div>
         </div>
       </div>
@@ -179,9 +174,6 @@ export default function SpeciesLanguagePanel({
                         value: row.pageviews,
                       }))}
                     />
-                    <div className="hint" style={{ marginTop: 8 }}>
-                      {timeseries[0]?.month} → {timeseries[timeseries.length - 1]?.month}
-                    </div>
                   </>
                 )}
               </div>
