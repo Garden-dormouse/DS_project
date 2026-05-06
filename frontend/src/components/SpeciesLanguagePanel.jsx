@@ -4,7 +4,6 @@ import MiniSparkline from "./MiniSparkline.jsx";
 export default function SpeciesLanguagePanel({
   selectedSpecies,
   topLanguages,
-  selectedRangeLabel,
   selectedLanguageCode,
   onSelectLanguageCode,
   timeseries,
