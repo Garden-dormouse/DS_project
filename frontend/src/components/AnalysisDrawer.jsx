@@ -26,10 +26,6 @@ export default function AnalysisDrawer({
       ? languageNames.join(", ")
       : `${languageNames.length} languages selected`;
 
-  const analysisText = species
-    ? `${species.latin_name} is currently selected in the main panel. Below, the drawer shows the monthly pageview trends for all species currently in the Top 20 ranking, based on the selected languages and time range.`
-    : `This drawer shows the monthly pageview trends for all species currently in the Top 20 ranking, based on the selected languages and time range.`;
-
   return (
     <div
       onClick={onClose}

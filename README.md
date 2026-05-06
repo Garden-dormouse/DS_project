@@ -55,77 +55,14 @@ MIGRATIONS_DIR=
 
 Set `VITE_API_URL` in `frontend/.env` if the backend is not on `http://localhost:5000`.
 
-## Setup
+## Quick Start with Dev Script
 
-### 1. Create and activate the Python environment
-
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
-
-### 2. Install backend dependencies
+For a faster setup, use the provided `dev.sh` script which automates the entire setup and starts both servers:
 
 ```bash
-pip install -r requirements.txt
+chmod +x dev.sh
+./dev.sh
 ```
-
-### 3. Run database migrations
-
-```bash
-python3 db/migrate.py
-```
-
-### 4. Prepare the data files
-
-Download [iso-639-3-macrolanguages.tab](https://iso639-3.sil.org/sites/iso639-3/files/downloads/iso-639-3-macrolanguages.tab) and place it in `data_wrangling/`.
-
-Make sure the pageview pickle files are available in `data_wrangling/` as well:
-
-- `pageview_mammal_monthly.pkl`
-- `pageview_bird_monthly.pkl`
-- `pageview_reptile_monthly.pkl`
-
-Then run the wrangling step:
-
-```bash
-cd data_wrangling
-python3 datawrangle.py
-```
-
-Adjust `PAGEVIEW_BATCH_SIZE` if you need a different batch size.
-
-### 5. Populate the database
-
-From the project root:
-
-```bash
-python3 src/populate_db.py
-```
-
-### 6. Install frontend dependencies
-
-```bash
-cd frontend
-npm install
-```
-
-## Running the Application
-
-Start the backend from the project root:
-
-```bash
-python3 src/api.py
-```
-
-Start the frontend in a separate terminal:
-
-```bash
-cd frontend
-npm run dev
-```
-
-Backend defaults to port `5000`; the frontend uses Vite's default dev port.
 
 ## Testing and Validation
 
