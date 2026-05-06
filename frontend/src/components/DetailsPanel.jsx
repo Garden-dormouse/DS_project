@@ -5,9 +5,6 @@ import { getTypeColor } from "../utils/constants.js";
 export default function DetailsPanel({
   selectedLanguages,
   topSpecies,
-  selectedRangeLabel,
-  startMonth,
-  endMonth,
   selectedSpecies,
   onSelectSpecies,
   timeseries,
