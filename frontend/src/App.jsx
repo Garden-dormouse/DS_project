@@ -554,7 +554,7 @@ export default function App() {
             <MapPanel
               languageRange={viewMode === "language" ? languageRange : speciesModeLanguageRange}
               mapIntensityByIso3={mapIntensityByIso3}
-              geojsonUrl="/data/world.geojson"
+              geojsonUrl="data/world.geojson"
               startMonth={effectiveStartMonth}
               endMonth={effectiveEndMonth}
               onStartMonthChange={handleStartMonthChange}
