@@ -3,7 +3,7 @@ Flask API for serving pageview data from the database.
 """
 
 import os
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from dotenv import load_dotenv
 from sqlalchemy import text
@@ -20,7 +20,8 @@ from services.language_service import LanguageService
 
 load_dotenv()
 
-app = Flask(__name__)
+# Serve frontend build from dist folder
+app = Flask(__name__, static_folder="../frontend/dist", static_url_path="")
 CORS(app)
 
 DB_URL = os.getenv("DB_URL")
@@ -137,8 +138,7 @@ def get_top_species():
             where_clauses.append("s.Type = :species_type")
             params["species_type"] = species_type
 
-        sql = text(
-            f"""
+        sql = text(f"""
             SELECT
                 s.ID AS id,
                 s.Latin_name AS latin_name,
@@ -155,8 +155,7 @@ def get_top_species():
             GROUP BY s.ID, s.Latin_name, s.Type
             ORDER BY pageviews DESC
             LIMIT :limit
-            """
-        )
+            """)
 
         rows = session.execute(sql, params).mappings().all()
 
@@ -262,7 +261,9 @@ def get_languages_map_data():
     with SessionFactory() as session:
         pageview_dao = SQLAlchemyPageviewDAO(session)
         service = PageviewService(pageview_dao)
-        result = service.get_languages_map_data(start_month, end_month, species_type, species_id)
+        result = service.get_languages_map_data(
+            start_month, end_month, species_type, species_id
+        )
 
     return jsonify(result)
 
@@ -296,6 +297,29 @@ def get_language_range(iso_code):
         result = service.get_range_by_iso(iso_code)
 
     return jsonify(result or {"type": "FeatureCollection", "features": []})
+
+
+# Catch-all route for serving the frontend SPA
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def serve_frontend(path):
+    """
+    Serve the frontend build. API routes take priority.
+    For any non-API route, serve index.html to allow React Router to handle routing.
+    """
+    # If the path starts with /api/, it should have been caught by the API routes
+    if path.startswith("api/"):
+        return {"error": "API endpoint not found"}, 404
+
+    # Try to serve the file if it exists (CSS, JS, etc.)
+    if path:
+        try:
+            return send_from_directory(app.static_folder, path)
+        except FileNotFoundError:
+            pass
+
+    # Serve index.html for all other routes (React Router will handle them)
+    return send_from_directory(app.static_folder, "index.html")
 
 
 if __name__ == "__main__":
