@@ -2,43 +2,86 @@ import React from "react";
 import "./panel.css";
 import WorldMap from "../WorldMap.jsx";
 
-export default function MapPanel({ 
-  selectedIso3, 
-  highlightedCountries,
-  onCountryClick, 
-  mapIntensityByIso3, 
+export default function MapPanel({
+  languageRange,
+  mapIntensityByIso3,
   geojsonUrl,
-  selectedMonth,
-  onMonthChange,
-  availableMonths 
+  startMonth,
+  endMonth,
+  onStartMonthChange,
+  onEndMonthChange,
+  onResetRange,
+  availableMonths,
+  accentColor = "#60A5FA",
+  speciesType = null,
 }) {
+  const minMonth = availableMonths?.[0];
+  const maxMonth = availableMonths?.[availableMonths.length - 1];
   return (
     <div className="panelInner">
       <div className="panelHeader">
         <div>
           <div className="panelTitle">Language Activity Map</div>
-          <div className="panelSubtitle">
-            {selectedMonth ? `Viewing: ${selectedMonth}` : "Viewing: All months (aggregated)"}
-          </div>
+          <div className="panelSubtitle">Interactive world map showing species pageview intensity by region</div>
         </div>
 
-        <div className="rightPills" style={{ gap: 8 }}>
-          <select
-            className="control control--compact"
-            value={selectedMonth || ""}
-            onChange={(e) => onMonthChange(e.target.value || null)}
-            style={{ fontSize: 11 }}
+        <div className="rightPills" style={{ gap: 8, flexWrap: "wrap" }}>
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label className="label">Start month</label>
+            <input
+              className="control control--compact"
+              type="month"
+              value={startMonth || ""}
+              min={minMonth}
+              max={maxMonth}
+              onChange={(e) => onStartMonthChange(e.target.value || null)}
+            />
+          </div>
+
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label className="label">End month</label>
+            <input
+              className="control control--compact"
+              type="month"
+              value={endMonth || ""}
+              min={minMonth}
+              max={maxMonth}
+              onChange={(e) => onEndMonthChange(e.target.value || null)}
+            />
+          </div>
+
+          <button
+            className="btn"
+            type="button"
+            onClick={onResetRange}
+            style={{ fontSize: 11, padding: "8px 10px", alignSelf: "end" }}
           >
-            <option value="">All Months</option>
-            {availableMonths.map((month) => (
-              <option key={month} value={month}>
-                {month}
-              </option>
-            ))}
-          </select>
-          
-          <div className="miniPill">
-            Selected: <span className="mono">{selectedIso3 ?? "none"}</span>
+            Reset
+          </button>
+
+          <div
+            className="miniPill"
+            style={{
+              alignSelf: "end",
+              borderColor: `${accentColor}55`,
+              color: "rgba(255,255,255,0.88)",
+            }}
+          >
+            Type color:{" "}
+            <span
+              style={{
+                display: "inline-block",
+                width: 10,
+                height: 10,
+                borderRadius: 999,
+                background: accentColor,
+                marginLeft: 6,
+                verticalAlign: "middle",
+              }}
+            />
+            <span className="mono" style={{ marginLeft: 6 }}>
+              {speciesType || "default"}
+            </span>
           </div>
         </div>
       </div>
@@ -46,10 +89,9 @@ export default function MapPanel({
       <div className="panelBody panelBody--map">
         <WorldMap
           geojsonUrl={geojsonUrl}
-          onCountryClick={onCountryClick}
-          selectedIso3={selectedIso3}
-          highlightedCountries={highlightedCountries}
+          languageRange={languageRange}
           valueByIso3={mapIntensityByIso3}
+          accentColor={accentColor}
         />
       </div>
     </div>

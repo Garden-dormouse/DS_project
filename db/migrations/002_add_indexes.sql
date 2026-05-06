@@ -1,17 +1,12 @@
-BEGIN TRANSACTION;
+BEGIN;
 
-CREATE INDEX idx_pageviews_timestamp
-ON Pageviews(Timestamp_ID);
+-- Index on species type for filtering by species type in queries
+CREATE INDEX IF NOT EXISTS idx_species_type ON species(type);
 
-CREATE INDEX idx_pageviews_language
-ON Pageviews(Language_ID);
-
-CREATE INDEX idx_pageviews_species
-ON Pageviews(Species_ID);
-
-CREATE INDEX idx_pageviews_combined
-ON Pageviews(Timestamp_ID, Language_ID, Species_ID);
-
-PRAGMA user_version = 2;
+CREATE INDEX IF NOT EXISTS idx_pageviews_optimized 
+  ON pageviews(timestamp_id, language_id, species_id, number_of_pageviews);
 
 COMMIT;
+
+
+

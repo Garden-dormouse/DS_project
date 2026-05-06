@@ -6,6 +6,7 @@ import os
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from dotenv import load_dotenv
+from sqlalchemy import text
 
 from db_module.engine import get_engine, get_session_factory
 from db_module.dao.species_dao import SQLAlchemySpeciesDAO
@@ -13,26 +14,47 @@ from db_module.dao.language_dao import SQLAlchemyLanguageDAO
 from db_module.dao.pageview_dao import SQLAlchemyPageviewDAO
 from db_module.dao.timestamp_dao import SQLAlchemyTimestampDAO
 from services.pageview_service import PageviewService
+from services.species_service import SpeciesService
 from services.timestamp_service import TimestampService
+from services.language_service import LanguageService
 
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
-DB_PATH = os.getenv("DB_PATH")
-DB_URL = f"sqlite:///{DB_PATH}"
+DB_URL = os.getenv("DB_URL")
 engine = get_engine(DB_URL)
 SessionFactory = get_session_factory(engine)
 
 
 @app.route("/api/species", methods=["GET"])
 def get_species():
-    """Get all species."""
+    """Get paginated species results for search and selection."""
+    query = request.args.get("q")
+    species_type = request.args.get("species_type")
+    requested_limit = request.args.get("limit", default=50, type=int)
+    requested_offset = request.args.get("offset", default=0, type=int)
+    limit = max(1, min(requested_limit or 50, 100))
+    offset = max(requested_offset or 0, 0)
+
     with SessionFactory() as session:
         species_dao = SQLAlchemySpeciesDAO(session)
-        species = species_dao.get_all()
-        return jsonify([{"id": s.ID, "latin_name": s.latin_name} for s in species])
+        service = SpeciesService(species_dao)
+        return jsonify(
+            service.search_species(
+                query=query,
+                species_type=species_type,
+                limit=limit,
+                offset=offset,
+            )
+        )
+
+
+@app.route("/api/species/types", methods=["GET"])
+def get_species_types():
+    """Get available species types."""
+    return jsonify(["mammal", "bird", "reptile"])
 
 
 @app.route("/api/languages", methods=["GET"])
@@ -43,7 +65,7 @@ def get_languages():
     Returns:
     [
       {
-        "code": "<glottocode>",
+        "code": "<ISO 639-3>",
         "name": "<display language name>"
       }
     ]
@@ -54,10 +76,10 @@ def get_languages():
 
         seen = {}
         for lang in languages:
-            if lang.glottocode and lang.glottocode not in seen:
-                seen[lang.glottocode] = {
-                    "code": lang.glottocode,  # used by frontend for API calls
-                    "name": lang.name,        # shown in dropdown/UI
+            if lang.iso_639_3 and lang.iso_639_3 not in seen:
+                seen[lang.iso_639_3] = {
+                    "code": lang.iso_639_3,
+                    "name": lang.name,
                 }
 
         return jsonify(list(seen.values()))
@@ -66,14 +88,143 @@ def get_languages():
 @app.route("/api/pageviews/top-species", methods=["GET"])
 def get_top_species():
     """
-    Get top species by pageviews for a specific language.
+    Get top species by pageviews for one or more languages and optional month range.
 
     Query params:
-    - language_code: glottocode
+    - language_codes: comma-separated ISO 639-3 codes, e.g. eng,fra,deu
+    - language_code: single ISO 639-3 code (backward compatible)
     - limit: Number of results (default 20)
+    - start_month: YYYY-MM
+    - end_month: YYYY-MM
+    - species_type: mammal | bird | reptile
+    """
+    language_codes_raw = request.args.get("language_codes", "").strip()
+    single_language_code = request.args.get("language_code", "").strip()
+    limit = request.args.get("limit", default=20, type=int)
+    start_month = request.args.get("start_month")
+    end_month = request.args.get("end_month")
+    species_type = request.args.get("species_type")
+
+    language_codes = []
+    if language_codes_raw:
+        language_codes = [c.strip() for c in language_codes_raw.split(",") if c.strip()]
+    elif single_language_code:
+        language_codes = [single_language_code]
+
+    if not language_codes:
+        return jsonify([])
+
+    with SessionFactory() as session:
+        placeholders = []
+        params = {"limit": limit}
+
+        for i, code in enumerate(language_codes):
+            key = f"lang_{i}"
+            placeholders.append(f":{key}")
+            params[key] = code
+
+        where_clauses = [f"l.ISO_639_3 IN ({', '.join(placeholders)})"]
+
+        if start_month:
+            where_clauses.append("to_char(t.Time, 'YYYY-MM') >= :start_month")
+            params["start_month"] = start_month
+
+        if end_month:
+            where_clauses.append("to_char(t.Time, 'YYYY-MM') <= :end_month")
+            params["end_month"] = end_month
+
+        if species_type:
+            where_clauses.append("s.Type = :species_type")
+            params["species_type"] = species_type
+
+        sql = text(
+            f"""
+            SELECT
+                s.ID AS id,
+                s.Latin_name AS latin_name,
+                s.Type AS type,
+                SUM(p.Number_of_Pageviews) AS pageviews
+            FROM Pageviews p
+            JOIN Species s
+                ON s.ID = p.Species_ID
+            JOIN Languages l
+                ON l.ID = p.Language_ID
+            JOIN Timestamps t
+                ON t.ID = p.Timestamp_ID
+            WHERE {" AND ".join(where_clauses)}
+            GROUP BY s.ID, s.Latin_name, s.Type
+            ORDER BY pageviews DESC
+            LIMIT :limit
+            """
+        )
+
+        rows = session.execute(sql, params).mappings().all()
+
+        result = [
+            {
+                "id": int(row["id"]),
+                "latin_name": row["latin_name"],
+                "type": row["type"],
+                "pageviews": int(row["pageviews"] or 0),
+            }
+            for row in rows
+        ]
+
+    return jsonify(result)
+
+
+@app.route("/api/pageviews/top-languages", methods=["GET"])
+def get_top_languages():
+    """
+    Get top languages by pageviews for a specific species and optional month range.
+
+    Query params:
+    - species_id: integer
+    - limit: Number of results (default 20)
+    - start_month: YYYY-MM
+    - end_month: YYYY-MM
+    - species_type: mammal | bird | reptile
+    """
+    species_id = request.args.get("species_id", type=int)
+    limit = request.args.get("limit", default=20, type=int)
+    start_month = request.args.get("start_month")
+    end_month = request.args.get("end_month")
+    species_type = request.args.get("species_type")
+
+    if species_id is None:
+        return jsonify([])
+
+    with SessionFactory() as session:
+        pageview_dao = SQLAlchemyPageviewDAO(session)
+        service = PageviewService(pageview_dao)
+        result = service.get_top_languages_for_species(
+            species_id=species_id,
+            limit=limit,
+            start_month=start_month,
+            end_month=end_month,
+            species_type=species_type,
+        )
+
+    return jsonify(result)
+
+
+@app.route("/api/pageviews/timeseries", methods=["GET"])
+def get_timeseries():
+    """
+    Get monthly pageviews timeseries for a specific language and optional species.
+
+    Query params:
+    - language_code: ISO 639-3
+    - species_id: optional species ID
+    - start_month: YYYY-MM
+    - end_month: YYYY-MM
+    - species_type: mammal | bird | reptile
     """
     language_code = request.args.get("language_code")
-    limit = request.args.get("limit", default=20, type=int)
+    species_id = request.args.get("species_id", type=int)
+    start_month = request.args.get("start_month")
+    end_month = request.args.get("end_month")
+    species_type = request.args.get("species_type")
 
     if not language_code:
         return jsonify([])
@@ -81,7 +232,13 @@ def get_top_species():
     with SessionFactory() as session:
         pageview_dao = SQLAlchemyPageviewDAO(session)
         service = PageviewService(pageview_dao)
-        result = service.get_top_species_for_language(language_code, limit)
+        result = service.get_timeseries(
+            language_code=language_code,
+            species_id=species_id,
+            start_month=start_month,
+            end_month=end_month,
+            species_type=species_type,
+        )
 
     return jsonify(result)
 
@@ -92,14 +249,20 @@ def get_languages_map_data():
     Get all languages with their total pageviews for map visualization.
 
     Query params:
-    - month: Specific month in YYYY-MM format (optional, if not specified shows all data)
+    - start_month: Start month in YYYY-MM format (inclusive)
+    - end_month: End month in YYYY-MM format (inclusive)
+    - species_type: mammal | bird | reptile
+    - species_id: optional integer
     """
-    month = request.args.get("month")
+    start_month = request.args.get("start_month")
+    end_month = request.args.get("end_month")
+    species_type = request.args.get("species_type")
+    species_id = request.args.get("species_id", type=int)
 
     with SessionFactory() as session:
         pageview_dao = SQLAlchemyPageviewDAO(session)
         service = PageviewService(pageview_dao)
-        result = service.get_languages_map_data(month)
+        result = service.get_languages_map_data(start_month, end_month, species_type, species_id)
 
     return jsonify(result)
 
@@ -118,108 +281,21 @@ def get_available_months():
         return jsonify(months)
 
 
-@app.route("/api/languages/<language_code>/countries", methods=["GET"])
-def get_language_countries(language_code):
+@app.route("/api/languages/<iso_code>/range", methods=["GET"])
+def get_language_range(iso_code):
     """
-    Get all countries where a specific language is spoken.
+    Get the geographic range of a language in GeoJSON format.
     Input:
-      language_code = glottocode
+      iso_code = ISO 639-3 code
     Output:
-      List of ISO3 country codes
+      GeoJSON FeatureCollection with polygon data, or empty FeatureCollection if not found
     """
+    with SessionFactory() as session:
+        language_dao = SQLAlchemyLanguageDAO(session)
+        service = LanguageService(language_dao)
+        result = service.get_range_by_iso(iso_code)
 
-    # glottocode -> ISO3 country list
-    # Adjust/add entries based on the languages you want to support in the UI.
-    glottocode_to_countries = {
-        # English
-        "stan1293": ["USA", "GBR", "CAN", "AUS", "NZL", "IRL"],
-
-        # Finnish
-        "finn1318": ["FIN"],
-
-        # Swedish
-        "swed1254": ["SWE", "FIN"],
-
-        # French
-        "stan1290": ["FRA", "BEL", "CHE", "CAN", "LUX"],
-
-        # German
-        "stan1295": ["DEU", "AUT", "CHE", "LIE"],
-
-        # Spanish
-        "stan1288": ["ESP", "MEX", "ARG", "COL", "PER", "VEN", "CHL"],
-
-        # Mandarin / Chinese
-        "mand1415": ["CHN", "TWN", "SGP"],
-
-        # Japanese
-        "nucl1643": ["JPN"],
-
-        # Portuguese
-        "port1283": ["PRT", "BRA"],
-
-        # Italian
-        "ital1282": ["ITA", "CHE"],
-
-        # Russian
-        "russ1263": ["RUS", "BLR", "KAZ"],
-
-        # Arabic
-        "arab1395": ["SAU", "EGY", "ARE", "JOR", "LBN"],
-
-        # Dutch
-        "dutc1256": ["NLD", "BEL"],
-
-        # Polish
-        "poli1260": ["POL"],
-
-        # Turkish
-        "nucl1301": ["TUR"],
-
-        # Korean
-        "kore1280": ["KOR"],
-
-        # Vietnamese
-        "viet1252": ["VNM"],
-
-        # Hindi
-        "hind1269": ["IND"],
-
-        # Norwegian
-        "norw1258": ["NOR"],
-
-        # Danish
-        "dani1284": ["DNK"],
-
-        # Czech
-        "czec1258": ["CZE"],
-
-        # Greek
-        "mode1248": ["GRC"],
-
-        # Thai
-        "thai1261": ["THA"],
-
-        # Indonesian
-        "indo1316": ["IDN"],
-
-        # Ukrainian
-        "ukra1253": ["UKR"],
-
-        # Romanian
-        "roma1327": ["ROU"],
-
-        # Hungarian
-        "hung1274": ["HUN"],
-
-        # Hebrew
-        "hebr1246": ["ISR"],
-
-        # Persian
-        "west2369": ["IRN"],
-    }
-
-    return jsonify(glottocode_to_countries.get(language_code, []))
+    return jsonify(result or {"type": "FeatureCollection", "features": []})
 
 
 if __name__ == "__main__":

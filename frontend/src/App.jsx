@@ -1,168 +1,451 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import "./App.css";
 
 import FiltersPanel from "./components/FiltersPanel.jsx";
 import MapPanel from "./components/MapPanel.jsx";
 import DetailsPanel from "./components/DetailsPanel.jsx";
+import AnalysisDrawer from "./components/AnalysisDrawer.jsx";
+import SpeciesFiltersPanel from "./components/SpeciesFiltersPanel.jsx";
+import SpeciesLanguagePanel from "./components/SpeciesLanguagePanel.jsx";
+import SpeciesAnalysisDrawer from "./components/SpeciesAnalysisDrawer.jsx";
 
-import { api } from "./services/api.js";
+import {
+  useLanguages,
+  useSpecies,
+  useAvailableMonths,
+  useSpeciesTypes,
+  useLanguagesMapData,
+  useTopLanguagesBySpecies,
+  useTimeseries,
+  useTopSpeciesByLanguageBatch,
+  useLanguageRangeBatch,
+  useTimeseriesBatch,
+  useSpeciesLanguageTimeseriesBatch,
+} from "./hooks/useApi.js";
+
+import { getTypeColor } from "./utils/constants.js";
+import {
+  sortMonths,
+  getMonthRange,
+  formatRangeLabel,
+  mergeLanguageRanges,
+  mergeTimeseriesResults,
+  mergeTopSpeciesResults,
+} from "./utils/dataTransform.js";
 
 export default function App() {
-  const [selectedIso3, setSelectedIso3] = useState(null);
-  const [selectedLanguage, setSelectedLanguage] = useState(null); // glottocode
-  const [highlightedCountries, setHighlightedCountries] = useState([]);
-  const [selectedMonth, setSelectedMonth] = useState(null);
-  const [languages, setLanguages] = useState([]);
-  const [availableMonths, setAvailableMonths] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // DATA FETCHING LAYER
+  // React Query hooks automatically handle caching, deduplication, and state
 
-  const [mapIntensityByIso3, setMapIntensityByIso3] = useState({});
-  const [topSpecies, setTopSpecies] = useState([]);
+  // Static data with 24-hour cache
+  const { data: languages = [] } = useLanguages();
+  const { data: speciesData = [] } = useSpecies();
+  const { data: availableMonths = [] } = useAvailableMonths();
+  const { data: speciesTypes = [] } = useSpeciesTypes();
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true);
-        const [languagesData, monthsData] = await Promise.all([
-          api.getLanguages(),
-          api.getMonths(),
-        ]);
-        setLanguages(Array.isArray(languagesData) ? languagesData : []);
-        setAvailableMonths(Array.isArray(monthsData) ? monthsData : []);
-      } catch (err) {
-        setError(err.message);
-        console.error("Error loading data:", err);
-      } finally {
-        setLoading(false);
-      }
+  const speciesList = useMemo(() => {
+    if (Array.isArray(speciesData)) return speciesData;
+    if (Array.isArray(speciesData?.items)) return speciesData.items;
+    return [];
+  }, [speciesData]);
+
+  // STATE MANAGEMENT
+  // Core UI state split into language view and species view modes
+
+  const [viewMode, setViewMode] = useState("language");
+  const [selectedLanguages, setSelectedLanguages] = useState([]);
+  const [selectedSpeciesType, setSelectedSpeciesType] = useState(null);
+  const [selectedSpeciesId, setSelectedSpeciesId] = useState(null);
+  const [selectedLanguageForSpeciesView, setSelectedLanguageForSpeciesView] = useState(null);
+  const [startMonth, setStartMonth] = useState(null);
+  const [endMonth, setEndMonth] = useState(null);
+  const [selectedSpecies, setSelectedSpecies] = useState(null);
+  const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
+  const [analysisSpecies, setAnalysisSpecies] = useState(null);
+  const [isSpeciesAnalysisOpen, setIsSpeciesAnalysisOpen] = useState(false);
+
+  // TIME RANGE COMPUTATION
+  // Handles month range logic with fallbacks to full date range
+
+  const sortedAvailableMonths = useMemo(
+    () => sortMonths(availableMonths),
+    [availableMonths]
+  );
+
+  const effectiveStartMonth = startMonth || sortedAvailableMonths[0] || null;
+  const effectiveEndMonth =
+    endMonth || sortedAvailableMonths[sortedAvailableMonths.length - 1] || null;
+  const loading = !effectiveStartMonth || !effectiveEndMonth;
+
+  const monthsInRange = useMemo(() => {
+    return getMonthRange(availableMonths, effectiveStartMonth, effectiveEndMonth);
+  }, [availableMonths, effectiveStartMonth, effectiveEndMonth]);
+
+  const selectedRangeLabel = useMemo(() => {
+    return formatRangeLabel(monthsInRange, availableMonths);
+  }, [monthsInRange, availableMonths]);
+
+  const selectedLanguageObjects = useMemo(() => {
+    const selectedSet = new Set(selectedLanguages);
+    return languages.filter((l) => selectedSet.has(l.code));
+  }, [languages, selectedLanguages]);
+
+  const selectedLanguageLabel = useMemo(() => {
+    if (!selectedLanguageObjects.length) return null;
+    if (selectedLanguageObjects.length <= 2) {
+      return selectedLanguageObjects.map((l) => l.name).join(", ");
     }
-    loadData();
-  }, []);
+    return `${selectedLanguageObjects.length} languages selected`;
+  }, [selectedLanguageObjects]);
 
-  useEffect(() => {
-    async function fetchMapData() {
-      try {
-        const filters = selectedMonth ? { month: selectedMonth } : {};
-        const mapData = await api.getLanguagesMapData(filters);
-        setMapIntensityByIso3(mapData || {});
-      } catch (err) {
-        console.error("Error fetching map data:", err);
-      }
+  const selectedSpeciesObject = useMemo(() => {
+    if (selectedSpeciesId == null) return null;
+    if (selectedSpecies?.id === selectedSpeciesId) return selectedSpecies;
+    return speciesList.find((species) => species.id === selectedSpeciesId) || null;
+  }, [speciesList, selectedSpeciesId, selectedSpecies]);
+
+  const activeTypeColor = useMemo(() => {
+    if (viewMode === "species") {
+      return getTypeColor(selectedSpeciesObject?.type || selectedSpeciesType);
     }
-    fetchMapData();
-  }, [selectedMonth]);
+    return getTypeColor(selectedSpeciesType);
+  }, [viewMode, selectedSpeciesObject, selectedSpeciesType]);
 
-  useEffect(() => {
-    if (!selectedLanguage) {
-      setTopSpecies([]);
-      setHighlightedCountries([]);
-      setSelectedIso3(null);
-      return;
-    }
+  // Use React Query hook for map data (automatically cached)
+  const mapFilters = useMemo(() => {
+    if (!effectiveStartMonth || !effectiveEndMonth || !availableMonths.length) return null;
+    if (viewMode === "species" && selectedSpeciesId == null) return null;
 
-    async function fetchLanguageData() {
-      try {
-        const [topSpeciesData, countries] = await Promise.all([
-          api.getTopSpeciesByLanguage(selectedLanguage, { limit: 20 }),
-          api.getLanguageCountries(selectedLanguage),
-        ]);
-
-        const safeCountries = Array.isArray(countries) ? countries : [];
-
-        setTopSpecies(Array.isArray(topSpeciesData) ? topSpeciesData : []);
-        setHighlightedCountries(safeCountries);
-        setSelectedIso3(safeCountries.length > 0 ? safeCountries[0] : null);
-
-        if (safeCountries.length > 0) {
-          setSelectedIso3(safeCountries[0]);
-        }
-      } catch (err) {
-        console.error("Error fetching language data:", err);
-        setTopSpecies([]);
-        setHighlightedCountries([]);
-      }
-    }
-
-    fetchLanguageData();
-  }, [selectedLanguage]);
-
-  // Country -> language NAME
-  const iso3ToLanguageName = useMemo(() => {
     return {
-      USA: "English",
-      GBR: "English",
-      CAN: "English",
-      AUS: "English",
-      NZL: "English",
-      IRL: "English",
-
-      FIN: "Finnish",
-
-      SWE: "Swedish",
-      NOR: "Swedish",
-
-      FRA: "French",
-      BEL: "French",
-      CHE: "French",
-      LUX: "French",
-
-      DEU: "German",
-      AUT: "German",
-      LIE: "German",
-
-      ESP: "Spanish",
-      MEX: "Spanish",
-      ARG: "Spanish",
-      COL: "Spanish",
-      PER: "Spanish",
-      VEN: "Spanish",
-      CHL: "Spanish",
-
-      CHN: "Chinese",
-      TWN: "Chinese",
-      SGP: "Chinese",
-
-      JPN: "Japanese",
-
-      PRT: "Portuguese",
-      BRA: "Portuguese",
-
-      ITA: "Italian",
-
-      RUS: "Russian",
-      BLR: "Russian",
-      KAZ: "Russian",
-
-      SAU: "Arabic",
-      EGY: "Arabic",
-      ARE: "Arabic",
-      JOR: "Arabic",
-      LBN: "Arabic",
-
-      NLD: "Dutch",
-      POL: "Polish",
-      TUR: "Turkish",
-      KOR: "Korean",
+      startMonth: effectiveStartMonth,
+      endMonth: effectiveEndMonth,
+      speciesType: selectedSpeciesType,
+      speciesId: viewMode === "species" ? selectedSpeciesId : null,
     };
-  }, []);
+  }, [
+    effectiveStartMonth,
+    effectiveEndMonth,
+    availableMonths,
+    selectedSpeciesType,
+    viewMode,
+    selectedSpeciesId,
+  ]);
 
-  const selectedLanguageObj = useMemo(() => {
-    return languages.find((l) => l.code === selectedLanguage) || null;
-  }, [languages, selectedLanguage]);
+  const { data: mapData } = useLanguagesMapData(mapFilters);
+  const mapIntensityByIso3 = mapData || {};
 
-  const selectedLanguageName = selectedLanguageObj?.name || null;
-
-  const handleCountryClick = (iso3) => {
-    setSelectedIso3(iso3);
-
-    const languageName = iso3ToLanguageName[iso3];
-    if (!languageName) return;
-
-    const matchedLanguage = languages.find((l) => l.name === languageName);
-    if (matchedLanguage) {
-      setSelectedLanguage(matchedLanguage.code); // glottocode
+  // Language view: only fetch when languages are selected
+  const hasLanguageSelection =
+    viewMode === "language" &&
+    selectedLanguages.length > 0 &&
+    !!effectiveStartMonth &&
+    !!effectiveEndMonth;
+  const topSpeciesQueries = useTopSpeciesByLanguageBatch(
+    hasLanguageSelection ? selectedLanguages : [],
+    {
+      limit: 100,
+      startMonth: effectiveStartMonth,
+      endMonth: effectiveEndMonth,
+      speciesType: selectedSpeciesType,
     }
+  );
+
+  // Batch fetch language ranges for all selected languages (cached per language)
+  const languageRangeQueries = useLanguageRangeBatch(
+    hasLanguageSelection ? selectedLanguages : []
+  );
+
+  const languageDataReady =
+    hasLanguageSelection &&
+    topSpeciesQueries.every((q) => !q.isPending) &&
+    languageRangeQueries.every((q) => !q.isPending);
+
+  const topSpecies = useMemo(() => {
+    if (!languageDataReady) return [];
+    const topSpeciesResponses = topSpeciesQueries.map((q) => q.data || []);
+    return mergeTopSpeciesResults(topSpeciesResponses, 20);
+  }, [
+    languageDataReady,
+    topSpeciesQueries,
+  ]);
+
+  const languageRange = useMemo(() => {
+    if (!languageDataReady) return null;
+    const languageRanges = languageRangeQueries.map((q) => q.data);
+    return mergeLanguageRanges(languageRanges);
+  }, [
+    languageDataReady,
+    languageRangeQueries,
+  ]);
+
+  // Species view: check if a species is in the top 20 for language selection
+  const selectedSpeciesInTop = useMemo(() => {
+    if (!selectedSpecies) return null;
+    return (
+      topSpecies.find(
+        (row) =>
+          (selectedSpecies.id != null && row.id === selectedSpecies.id) ||
+          row.latin_name === selectedSpecies.latin_name
+      ) || null
+    );
+  }, [selectedSpecies, topSpecies]);
+
+  // Batch fetch timeseries for all selected languages (cached per language)
+  const timeseriesQueries = useTimeseriesBatch(
+    {
+      speciesId: selectedSpeciesInTop?.id,
+      startMonth: effectiveStartMonth,
+      endMonth: effectiveEndMonth,
+      speciesType: selectedSpeciesType,
+    },
+    hasLanguageSelection ? selectedLanguages : []
+  );
+
+  const timeseriesLoading =
+    hasLanguageSelection && timeseriesQueries.some((q) => q.isPending);
+
+  const timeseries = useMemo(() => {
+    if (!hasLanguageSelection || timeseriesLoading) return [];
+    const responses = timeseriesQueries.map((q) => q.data || []);
+    return mergeTimeseriesResults(responses, monthsInRange);
+  }, [hasLanguageSelection, timeseriesLoading, timeseriesQueries, monthsInRange]);
+
+  const topSpeciesIds = useMemo(
+    () => topSpecies.map((species) => species.id).filter((id) => id != null),
+    [topSpecies]
+  );
+
+  const topSpeciesTimeseriesQueries = useSpeciesLanguageTimeseriesBatch(
+    hasLanguageSelection ? topSpeciesIds : [],
+    hasLanguageSelection ? selectedLanguages : [],
+    {
+      startMonth: effectiveStartMonth,
+      endMonth: effectiveEndMonth,
+      speciesType: selectedSpeciesType,
+    }
+  );
+
+  const analysisLoading =
+    hasLanguageSelection &&
+    topSpecies.length > 0 &&
+    topSpeciesTimeseriesQueries.some((q) => q.isPending);
+
+  const topSpeciesTimeseries = useMemo(() => {
+    if (!hasLanguageSelection || !topSpecies.length || analysisLoading) return [];
+
+    const responsesBySpeciesId = new Map();
+
+    for (const query of topSpeciesTimeseriesQueries) {
+      if (query.speciesId == null) continue;
+      const existing = responsesBySpeciesId.get(query.speciesId) || [];
+      responsesBySpeciesId.set(query.speciesId, [...existing, query.data || []]);
+    }
+
+    return topSpecies.map((species) => ({
+      id: species.id,
+      latin_name: species.latin_name,
+      type: species.type || null,
+      totalPageviews: species.pageviews,
+      timeseries: mergeTimeseriesResults(
+        responsesBySpeciesId.get(species.id) || [],
+        monthsInRange
+      ),
+    }));
+  }, [
+    hasLanguageSelection,
+    topSpecies,
+    analysisLoading,
+    topSpeciesTimeseriesQueries,
+    monthsInRange,
+  ]);
+
+  const hasSpeciesSelection =
+    viewMode === "species" &&
+    selectedSpeciesId != null &&
+    !!effectiveStartMonth &&
+    !!effectiveEndMonth;
+
+  // ============================================================================
+  // SPECIES VIEW - TOP LANGUAGES QUERY
+  // Fetches top 20 languages for the selected species
+  // ============================================================================
+  const topLanguagesBySpeciesQuery = useTopLanguagesBySpecies({
+    speciesId: hasSpeciesSelection ? selectedSpeciesId : null,
+    limit: 20,
+    startMonth: effectiveStartMonth,
+    endMonth: effectiveEndMonth,
+    speciesType: selectedSpeciesType,
+  });
+
+  const topLanguages = useMemo(() => {
+    if (!hasSpeciesSelection) return [];
+    if (topLanguagesBySpeciesQuery.isPending || topLanguagesBySpeciesQuery.isError) {
+      return [];
+    }
+    return Array.isArray(topLanguagesBySpeciesQuery.data)
+      ? topLanguagesBySpeciesQuery.data
+      : [];
+  }, [hasSpeciesSelection, topLanguagesBySpeciesQuery]);
+
+  const selectedSpeciesLanguageCode = useMemo(() => {
+    if (!selectedLanguageForSpeciesView) return null;
+    const codes = new Set(topLanguages.map((row) => row.code).filter(Boolean));
+    return codes.has(selectedLanguageForSpeciesView) ? selectedLanguageForSpeciesView : null;
+  }, [selectedLanguageForSpeciesView, topLanguages]);
+
+  // Batch fetch language ranges for species mode (cached per language)
+  const speciesModeRangeQueries = useLanguageRangeBatch(
+    viewMode === "species" && topLanguages.length > 0
+      ? topLanguages.map((row) => row.code).filter(Boolean)
+      : []
+  );
+
+  const speciesModeLanguageRange = useMemo(() => {
+    if (viewMode !== "species" || !topLanguages.length) return null;
+    if (speciesModeRangeQueries.some((q) => q.isPending)) return null;
+    const languageRanges = speciesModeRangeQueries.map((q) => q.data);
+    return mergeLanguageRanges(languageRanges);
+  }, [viewMode, topLanguages, speciesModeRangeQueries]);
+
+  // Batch fetch timeseries for species view (all top languages)
+  const speciesLanguageTimeseriesQueries = useTimeseriesBatch(
+    {
+      speciesId: selectedSpeciesId,
+      startMonth: effectiveStartMonth,
+      endMonth: effectiveEndMonth,
+      speciesType: selectedSpeciesType,
+    },
+    viewMode === "species" && topLanguages.length > 0
+      ? topLanguages.map((row) => row.code).filter(Boolean)
+      : []
+  );
+
+  // Single timeseries for selected language in species view
+  const selectedSpeciesLanguageTimeseries = useTimeseries(
+    viewMode === "species" && selectedSpeciesLanguageCode
+      ? {
+          languageCode: selectedSpeciesLanguageCode,
+          speciesId: selectedSpeciesId,
+          startMonth: effectiveStartMonth,
+          endMonth: effectiveEndMonth,
+          speciesType: selectedSpeciesType,
+        }
+      : null
+  );
+
+  const speciesLanguageTimeseriesLoading = useMemo(() => {
+    if (!hasSpeciesSelection) return false;
+    if (!selectedSpeciesLanguageCode) {
+      return speciesLanguageTimeseriesQueries.some((q) => q.isPending);
+    }
+    return selectedSpeciesLanguageTimeseries.isPending;
+  }, [
+    hasSpeciesSelection,
+    selectedSpeciesLanguageCode,
+    speciesLanguageTimeseriesQueries,
+    selectedSpeciesLanguageTimeseries,
+  ]);
+
+  const speciesLanguageTimeseries = useMemo(() => {
+    if (!hasSpeciesSelection || speciesLanguageTimeseriesLoading) return [];
+    if (!selectedSpeciesLanguageCode) {
+      const responses = speciesLanguageTimeseriesQueries.map((q) => q.data || []);
+      return mergeTimeseriesResults(responses, monthsInRange);
+    }
+    const rows = selectedSpeciesLanguageTimeseries.data || [];
+    return mergeTimeseriesResults([rows], monthsInRange);
+  }, [
+    hasSpeciesSelection,
+    speciesLanguageTimeseriesLoading,
+    selectedSpeciesLanguageCode,
+    speciesLanguageTimeseriesQueries,
+    selectedSpeciesLanguageTimeseries,
+    monthsInRange,
+  ]);
+
+  const canBuildSpeciesAggregate =
+    hasSpeciesSelection && topLanguages.length > 0;
+
+  const speciesAggregateTimeseriesLoading =
+    canBuildSpeciesAggregate &&
+    speciesLanguageTimeseriesQueries.length > 0 &&
+    speciesLanguageTimeseriesQueries.some((q) => q.isPending);
+
+  const speciesAggregateTimeseries = useMemo(() => {
+    if (!canBuildSpeciesAggregate || speciesAggregateTimeseriesLoading) return [];
+    const allResponses = speciesLanguageTimeseriesQueries.map((q) => q.data || []);
+    return mergeTimeseriesResults(allResponses, monthsInRange);
+  }, [
+    canBuildSpeciesAggregate,
+    speciesAggregateTimeseriesLoading,
+    speciesLanguageTimeseriesQueries,
+    monthsInRange,
+  ]);
+
+  const topLanguageTimeseries = useMemo(() => {
+    if (!canBuildSpeciesAggregate || speciesAggregateTimeseriesLoading) return [];
+    const allResponses = speciesLanguageTimeseriesQueries.map((q) => q.data || []);
+    return topLanguages.map((row, idx) => ({
+      code: row.code,
+      name: row.name,
+      totalPageviews: row.pageviews,
+      timeseries: mergeTimeseriesResults([allResponses[idx]], monthsInRange),
+    }));
+  }, [
+    canBuildSpeciesAggregate,
+    speciesAggregateTimeseriesLoading,
+    speciesLanguageTimeseriesQueries,
+    topLanguages,
+    monthsInRange,
+  ]);
+
+  const topLanguageTimeseriesLoading = speciesAggregateTimeseriesLoading;
+
+  // ============================================================================
+  // EVENT HANDLERS
+  // ============================================================================
+
+  const handleStartMonthChange = (value) => {
+    setStartMonth(value);
+    if (effectiveEndMonth && value && value > effectiveEndMonth) {
+      setEndMonth(value);
+    }
+  };
+
+  const handleEndMonthChange = (value) => {
+    setEndMonth(value);
+    if (effectiveStartMonth && value && value < effectiveStartMonth) {
+      setStartMonth(value);
+    }
+  };
+
+  const handleResetRange = () => {
+    if (!sortedAvailableMonths.length) return;
+    setStartMonth(sortedAvailableMonths[0]);
+    setEndMonth(sortedAvailableMonths[sortedAvailableMonths.length - 1]);
+  };
+
+  const handleSelectSpeciesOption = (species) => {
+    setSelectedSpecies(species || null);
+    setSelectedSpeciesId(species?.id ?? null);
+    setSelectedLanguageForSpeciesView(null);
+  };
+
+  const handleOpenAnalysis = (species) => {
+    setAnalysisSpecies(species || selectedSpeciesInTop || null);
+    setIsAnalysisOpen(true);
+  };
+
+  const handleCloseAnalysis = () => {
+    setIsAnalysisOpen(false);
+  };
+
+  const handleOpenSpeciesAnalysis = () => {
+    setIsSpeciesAnalysisOpen(true);
+  };
+
+  const handleCloseSpeciesAnalysis = () => {
+    setIsSpeciesAnalysisOpen(false);
   };
 
   if (loading) {
@@ -173,65 +456,181 @@ export default function App() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="app">
-        <div style={{ padding: "2rem", color: "red" }}>Error: {error}</div>
-      </div>
-    );
-  }
-
   return (
-    <div className="app">
-      <header className="topbar">
-        <div className="topbar__left">
-          <div className="brand">
-            <div className="brand__title">Wikipedia Species Interest Dashboard</div>
-            <div className="brand__subtitle">
-              Explore species pageviews by language and region
+    <>
+      <div className="app">
+        <header className="topbar">
+          <div className="topbar__left">
+            <div className="brand">
+              <div className="brand__title">Wikipedia Species Interest Dashboard</div>
+              <div className="brand__subtitle">
+                Explore species pageviews by language and region
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="topbar__right">
-          <div className="pill">
-            {selectedMonth ? `Month: ${selectedMonth}` : "All Months"}
+          <div className="topbar__right">
+            <div
+              className="pill"
+              style={{ display: "flex", gap: 6, alignItems: "center" }}
+            >
+              <button
+                type="button"
+                className="btn"
+                style={{
+                  minWidth: 120,
+                  padding: "6px 10px",
+                  background:
+                    viewMode === "language"
+                      ? "rgba(96,165,250,0.16)"
+                      : "rgba(255,255,255,0.03)",
+                }}
+                onClick={() => setViewMode("language")}
+              >
+                By Language
+              </button>
+              <button
+                type="button"
+                className="btn"
+                style={{
+                  minWidth: 120,
+                  padding: "6px 10px",
+                  background:
+                    viewMode === "species"
+                      ? "rgba(96,165,250,0.16)"
+                      : "rgba(255,255,255,0.03)",
+                }}
+                onClick={() => setViewMode("species")}
+              >
+                By Species
+              </button>
+            </div>
+
+            <div className="pill">Range: {selectedRangeLabel}</div>
+
+            {viewMode === "language" ? (
+              <div className="pill">
+                {selectedLanguageLabel
+                  ? `Languages: ${selectedLanguageLabel}`
+                  : "Select language(s)"}
+              </div>
+            ) : (
+              <div className="pill">
+                {selectedSpeciesObject
+                  ? `Species: ${selectedSpeciesObject.latin_name}`
+                  : "Select a species"}
+              </div>
+            )}
+
+            <div className="pill">
+              {selectedSpeciesType ? `Type: ${selectedSpeciesType}` : "All types"}
+            </div>
           </div>
-          <div className="pill">
-            {selectedLanguageName ? `Language: ${selectedLanguageName}` : "Select a language"}
-          </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="dashboard">
-        <aside className="panel panel--left">
-          <FiltersPanel
-            languages={languages}
-            selectedLanguage={selectedLanguage}
-            onSelectLanguage={setSelectedLanguage}
-          />
-        </aside>
+        <main className="dashboard">
+          <aside className="panel panel--left">
+            {viewMode === "language" ? (
+              <FiltersPanel
+                languages={languages}
+                selectedLanguages={selectedLanguages}
+                onChangeSelectedLanguages={setSelectedLanguages}
+                speciesTypes={speciesTypes}
+                selectedSpeciesType={selectedSpeciesType}
+                onSelectSpeciesType={setSelectedSpeciesType}
+              />
+            ) : (
+              <SpeciesFiltersPanel
+                selectedSpecies={selectedSpeciesObject}
+                onSelectSpecies={handleSelectSpeciesOption}
+                speciesTypes={speciesTypes}
+                selectedSpeciesType={selectedSpeciesType}
+                onSelectSpeciesType={setSelectedSpeciesType}
+              />
+            )}
+          </aside>
 
-        <section className="panel panel--center">
-          <MapPanel
-            selectedIso3={selectedIso3}
-            highlightedCountries={highlightedCountries}
-            onCountryClick={handleCountryClick}
-            mapIntensityByIso3={mapIntensityByIso3}
-            geojsonUrl="/data/world.geojson"
-            selectedMonth={selectedMonth}
-            onMonthChange={setSelectedMonth}
-            availableMonths={availableMonths}
-          />
-        </section>
+          <section className="panel panel--center">
+            <MapPanel
+              languageRange={viewMode === "language" ? languageRange : speciesModeLanguageRange}
+              mapIntensityByIso3={mapIntensityByIso3}
+              geojsonUrl="/data/world.geojson"
+              startMonth={effectiveStartMonth}
+              endMonth={effectiveEndMonth}
+              onStartMonthChange={handleStartMonthChange}
+              onEndMonthChange={handleEndMonthChange}
+              onResetRange={handleResetRange}
+              availableMonths={availableMonths}
+              accentColor={activeTypeColor}
+              speciesType={
+                viewMode === "species"
+                  ? selectedSpeciesObject?.type || selectedSpeciesType
+                  : selectedSpeciesType
+              }
+            />
+          </section>
 
-        <aside className="panel panel--right">
-          <DetailsPanel
-            selectedLanguage={selectedLanguageName || selectedLanguage}
-            topSpecies={topSpecies}
-          />
-        </aside>
-      </main>
-    </div>
+          <aside className="panel panel--right">
+            {viewMode === "language" ? (
+              <DetailsPanel
+                selectedLanguages={selectedLanguageObjects}
+                topSpecies={topSpecies}
+                selectedRangeLabel={selectedRangeLabel}
+                startMonth={effectiveStartMonth}
+                endMonth={effectiveEndMonth}
+                selectedSpecies={selectedSpeciesInTop}
+                onSelectSpecies={setSelectedSpecies}
+                timeseries={timeseries}
+                timeseriesLoading={timeseriesLoading}
+                onOpenAnalysis={handleOpenAnalysis}
+                accentColor={activeTypeColor}
+              />
+            ) : (
+              <SpeciesLanguagePanel
+                selectedSpecies={selectedSpeciesObject}
+                topLanguages={topLanguages}
+                selectedRangeLabel={selectedRangeLabel}
+                selectedLanguageCode={selectedSpeciesLanguageCode}
+                onSelectLanguageCode={setSelectedLanguageForSpeciesView}
+                timeseries={speciesLanguageTimeseries}
+                timeseriesLoading={speciesLanguageTimeseriesLoading}
+                onOpenAnalysis={handleOpenSpeciesAnalysis}
+                accentColor={activeTypeColor}
+              />
+            )}
+          </aside>
+        </main>
+      </div>
+
+      {viewMode === "language" && (
+        <AnalysisDrawer
+          isOpen={isAnalysisOpen}
+          species={analysisSpecies}
+          selectedLanguages={selectedLanguageObjects}
+          selectedRangeLabel={selectedRangeLabel}
+          timeseries={timeseries}
+          timeseriesLoading={timeseriesLoading}
+          topSpeciesTimeseries={topSpeciesTimeseries}
+          analysisLoading={analysisLoading}
+          onClose={handleCloseAnalysis}
+          accentColor={activeTypeColor}
+        />
+      )}
+
+      {viewMode === "species" && (
+        <SpeciesAnalysisDrawer
+          isOpen={isSpeciesAnalysisOpen}
+          species={selectedSpeciesObject}
+          selectedRangeLabel={selectedRangeLabel}
+          aggregateTimeseries={speciesAggregateTimeseries}
+          aggregateTimeseriesLoading={speciesAggregateTimeseriesLoading}
+          topLanguageTimeseries={topLanguageTimeseries}
+          analysisLoading={topLanguageTimeseriesLoading}
+          selectedLanguageCode={selectedSpeciesLanguageCode}
+          onClose={handleCloseSpeciesAnalysis}
+          accentColor={activeTypeColor}
+        />
+      )}
+    </>
   );
 }

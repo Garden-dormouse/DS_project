@@ -6,10 +6,10 @@ This module defines abstract base classes (ABCs) that specify the contract for d
 """
 
 import datetime
-
 from abc import ABC, abstractmethod
 from typing import Iterable
-from db_module.models import Species, Language, Timestamp, Pageview
+
+from db_module.models import Language, Pageview, Species, Timestamp
 
 
 class SpeciesDAO(ABC):
@@ -21,12 +21,12 @@ class SpeciesDAO(ABC):
     """
 
     @abstractmethod
-    def get_by_id(self, species_ID: int) -> Species | None:
+    def get_by_id(self, species_id: int) -> Species | None:
         """
         Retrieve a Species by its primary key.
 
         Args:
-            species_ID (int): Primary key of the Species.
+            species_id (int): Primary key of the Species.
 
         Returns:
             Species | None: The requested Species if found, otherwise None.
@@ -44,15 +44,51 @@ class SpeciesDAO(ABC):
         pass
 
     @abstractmethod
-    def create(self, latin_name: str) -> Species:
+    def search(
+        self,
+        query: str | None = None,
+        species_type: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[Species], bool]:
+        """
+        Retrieve a paginated species result set.
+
+        Args:
+            query (str | None): Optional free-text search for the Latin name.
+            species_type (str | None): Optional species type filter.
+            limit (int): Maximum number of rows to return.
+            offset (int): Result offset for pagination.
+
+        Returns:
+            tuple[list[Species], bool]: Matching Species rows and a flag indicating
+            whether more rows are available after this page.
+        """
+        pass
+
+    @abstractmethod
+    def create_single(self, latin_name: str, species_type: str) -> Species:
         """
         Create and persist a new Species.
 
         Args:
             latin_name (str): The Latin name of the species.
+            species_type (str): The type of the species (e.g., 'reptile', 'bird', 'mammals').
 
         Returns:
             Species: The newly created Species.
+        """
+        pass
+
+    def create_many(self, species_list: list[tuple[str, str]]) -> list[Species]:
+        """
+        Create and persist multiple Species.
+
+        Args:
+            species_list (list[tuple[str, str]]): A list of (latin_name, species_type) tuples.
+
+        Returns:
+            list[Species]: The newly created Species objects.
         """
         pass
 
@@ -66,12 +102,12 @@ class LanguageDAO(ABC):
     """
 
     @abstractmethod
-    def get_by_id(self, language_ID: int) -> Language | None:
+    def get_by_id(self, language_id: int) -> Language | None:
         """
         Retrieve a Language by its primary key.
 
         Args:
-            language_ID (int): Primary key of the Language.
+            language_id (int): Primary key of the Language.
 
         Returns:
             Language | None: The requested Language if found, otherwise None.
@@ -89,7 +125,33 @@ class LanguageDAO(ABC):
         pass
 
     @abstractmethod
-    def create(self, name: str, iso_639_3: str, glottocode: str) -> Language:
+    def get_by_name(self, name: str) -> Language | None:
+        """
+        Retrieve a language by its name.
+
+        Args:
+            name (str): The name of the language.
+
+        Returns:
+            language (Language | None): The requested Language if found, otherwise None.
+        """
+        pass
+
+    @abstractmethod
+    def get_by_iso(self, iso_639_3: str) -> Language | None:
+        """
+        Retrieve a language by its ISO 639-3 code.
+
+        Args:
+            iso_639_3 (str): The three-letter ISO 639-3 code of the language.
+
+        Returns:
+            language (Language | None): The requested Language if found, otherwise None.
+        """
+        pass
+
+    @abstractmethod
+    def create(self, name: str, iso_639_3: str, language_range: str) -> Language:
         """
         Create and persist a new Language.
 
@@ -103,6 +165,22 @@ class LanguageDAO(ABC):
         """
         pass
 
+    @abstractmethod
+    def create_many(
+        self, languages_list: list[tuple[str, str, str]]
+    ) -> list[Language]:
+        """
+        Create and persist multiple Languages.
+
+        Args:
+            languages_list (list[tuple[str, str, str]]):
+                List of (name, iso_639_3, language_range) tuples.
+
+        Returns:
+            list[Language]: Newly created Language objects.
+        """
+        pass
+
 
 class TimestampDAO(ABC):
     """
@@ -113,12 +191,12 @@ class TimestampDAO(ABC):
     """
 
     @abstractmethod
-    def get_by_id(self, timestamp_ID: int) -> Timestamp | None:
+    def get_by_id(self, timestamp_id: int) -> Timestamp | None:
         """
         Retrieve a Timestamp by its primary key.
 
         Args:
-            timestamp_ID (int): Primary key of the Timestamp.
+            timestamp_id (int): Primary key of the Timestamp.
 
         Returns:
             Timestamp | None: The requested Timestamp if found, otherwise None.
@@ -158,6 +236,19 @@ class TimestampDAO(ABC):
         """
         pass
 
+    @abstractmethod
+    def create_many(self, times: list[datetime.datetime]) -> list[Timestamp]:
+        """
+        Create and persist multiple Timestamps.
+
+        Args:
+            times (list[datetime.datetime]): Timestamp values to insert.
+
+        Returns:
+            list[Timestamp]: Newly created Timestamp objects.
+        """
+        pass
+
 
 class PageviewDAO(ABC):
     """
@@ -168,12 +259,12 @@ class PageviewDAO(ABC):
     """
 
     @abstractmethod
-    def get_by_id(self, pageview_ID: int) -> Pageview | None:
+    def get_by_id(self, pageview_id: int) -> Pageview | None:
         """
         Retrieve a Pageview by its primary key.
 
         Args:
-            pageview_ID (int): Primary key of the Pageview.
+            pageview_id (int): Primary key of the Pageview.
 
         Returns:
             Pageview | None: The requested Pageview if found, otherwise None.
@@ -192,55 +283,138 @@ class PageviewDAO(ABC):
 
     @abstractmethod
     def get_top_species_by_language(
-        self, language_code: str, limit: int = 20
-    ) -> list[tuple[Species, int]]:
+        self,
+        language_code: str,
+        limit: int = 20,
+        start_month: str | None = None,
+        end_month: str | None = None,
+        species_type: str | None = None,
+    ) -> list[tuple[int, str, str, int]]:
         """
         Retrieve top species by total pageviews for a given language.
 
         Args:
-            language_code (str): The ISO 639 code of the language to filter pageviews by.
+            language_code (str): The ISO 639-3 code of the language to filter pageviews by.
             limit (int): Maximum number of species to return.
+            start_month (str | None): Optional start month in 'YYYY-MM' format (inclusive).
+            end_month (str | None): Optional end month in 'YYYY-MM' format (exclusive).
+            species_type (str | None): Optional species type filter (e.g., 'mammal', 'bird', 'reptile').
 
         Returns:
-            list[tuple[Species, int]]: List of tuples containing the Species object and its total
-            pageviews, ordered descending by pageviews.
+            list[tuple[int, str, str, int]]: List of tuples
+                (species_id, latin_name, species_type, total_pageviews),
+                ordered descending by pageviews.
+        """
+        pass
+
+    @abstractmethod
+    def get_top_languages_by_species(
+        self,
+        species_id: int,
+        limit: int = 20,
+        start_month: str | None = None,
+        end_month: str | None = None,
+        species_type: str | None = None,
+    ) -> list[tuple[str, str, int]]:
+        """
+        Retrieve top languages by total pageviews for a given species.
+
+        Args:
+            species_id (int): The primary key of the species to filter pageviews by.
+            limit (int): Maximum number of languages to return.
+            start_month (str | None): Optional start month in 'YYYY-MM' format (inclusive).
+            end_month (str | None): Optional end month in 'YYYY-MM' format (exclusive).
+            species_type (str | None): Optional species type filter (e.g., 'mammal', 'bird', 'reptile').
+
+        Returns:
+            list[tuple[str, str, int]]: List of tuples
+                (language_code, language_name, total_pageviews),
+                ordered descending by pageviews.
+        """
+        pass
+
+    @abstractmethod
+    def get_timeseries_by_language(
+        self,
+        language_code: str,
+        species_id: int | None = None,
+        start_month: str | None = None,
+        end_month: str | None = None,
+        species_type: str | None = None,
+    ) -> list[tuple[str, int]]:
+        """
+        Retrieve monthly pageview totals for a given language.
+
+        Args:
+            language_code (str): The ISO 639-3 code of the language.
+            species_id (int | None): Optional species ID to filter by a specific species.
+            start_month (str | None): Optional start month in 'YYYY-MM' format (inclusive).
+            end_month (str | None): Optional end month in 'YYYY-MM' format (exclusive).
+            species_type (str | None): Optional species type filter (e.g., 'mammal', 'bird', 'reptile').
+
+        Returns:
+            list[tuple[str, int]]: List of tuples (month, total_pageviews),
+                where month is in 'YYYY-MM' format, ordered ascending by month.
         """
         pass
 
     @abstractmethod
     def get_total_pageviews_by_language(
-        self, month: str | None = None
-    ) -> list[tuple[Language, int]]:
+        self,
+        start_month: str | None = None,
+        end_month: str | None = None,
+        species_type: str | None = None,
+        species_id: int | None = None,
+    ) -> list[tuple[str, int]]:
         """
-        Retrieve all languages with their total pageviews with optional filter by month.
+        Retrieve all languages with their total pageviews, with optional filters.
 
         Args:
-            month (str | None): Optional month filter in 'YYYY-MM' format.
+            start_month (str | None): Optional start month in 'YYYY-MM' format (inclusive).
+            end_month (str | None): Optional end month in 'YYYY-MM' format (inclusive).
+            species_type (str | None): Optional species type filter (e.g., 'mammal', 'bird', 'reptile').
+            species_id (int | None): Optional species ID to filter by a specific species.
 
         Returns:
-            list[tuple[str, int]]: List of tuples (language_code, total_pageviews)
-            pageviews
+            list[tuple[str, int]]: List of tuples (language_code, total_pageviews).
         """
         pass
 
     @abstractmethod
-    def create(
+    def create_single(
         self,
-        timestamp_ID: int,
-        language_ID: int,
-        species_ID: int,
+        timestamp_id: int,
+        language_id: int,
+        species_id: int,
         number_of_pageviews: int,
     ) -> Pageview:
         """
         Create and persist a new Pageview.
 
         Args:
-            timestamp_ID (int): ID of the associated Timestamp.
-            language_ID (int): ID of the associated Language.
-            species_ID (int): ID of the associated Species.
+            timestamp_id (int): ID of the associated Timestamp.
+            language_id (int): ID of the associated Language.
+            species_id (int): ID of the associated Species.
             number_of_pageviews (int): Recorded number of pageviews.
 
         Returns:
             Pageview: The newly created Pageview.
+        """
+        pass
+
+    @abstractmethod
+    def create_many(
+        self,
+        pageviews_list: list[tuple[int, int, int, int]],
+    ) -> list[Pageview]:
+        """
+        Create and persist multiple Pageviews.
+
+        Args:
+            pageviews_list (list[tuple[int, int, int, int]]): List of tuples containing
+                (timestamp_ID, language_ID, species_ID, number_of_pageviews).
+
+        Returns:
+            list[Pageview]: The newly created Pageviews.
         """
         pass

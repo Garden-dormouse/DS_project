@@ -1,38 +1,27 @@
 import "./panel.css";
 import MiniSparkline from "./MiniSparkline.jsx";
-import { getTypeColor } from "../utils/constants.js";
 
-export default function DetailsPanel({
-  selectedLanguages,
-  topSpecies,
-  selectedRangeLabel,
-  startMonth,
-  endMonth,
+export default function SpeciesLanguagePanel({
   selectedSpecies,
-  onSelectSpecies,
+  topLanguages,
+  selectedRangeLabel,
+  selectedLanguageCode,
+  onSelectLanguageCode,
   timeseries,
   timeseriesLoading,
   onOpenAnalysis,
   accentColor = "#60A5FA",
 }) {
-  const languageNames = Array.isArray(selectedLanguages)
-    ? selectedLanguages.map((l) => l.name)
-    : [];
+  const selectedLanguage =
+    topLanguages.find((row) => row.code === selectedLanguageCode) || null;
 
-  const languageLabel =
-    languageNames.length === 0
-      ? null
-      : languageNames.length <= 3
-      ? languageNames.join(", ")
-      : `${languageNames.length} languages selected`;
+  const timeseriesTitle = selectedLanguage
+    ? `Timeseries: ${selectedLanguage.name}`
+    : "Timeseries: All selected languages";
 
-  const timeseriesTitle = selectedSpecies
-    ? `Timeseries: ${selectedSpecies.latin_name}`
-    : "Timeseries: Total views";
-
-  const timeseriesSubtitle = selectedSpecies
-    ? "Showing the selected species across the chosen languages"
-    : "Showing total views across the chosen languages";
+  const timeseriesSubtitle = selectedLanguage
+    ? "Monthly pageviews for the selected species in this language"
+    : "Monthly total pageviews for the selected species across all Top 20 languages";
 
   return (
     <div
@@ -45,12 +34,12 @@ export default function DetailsPanel({
     >
       <div className="panelHeader">
         <div>
-          <div className="panelTitle">Top Species by Language</div>
+          <div className="panelTitle">Top Languages by Species</div>
           <div className="panelSubtitle">
-            {languageLabel ? (
-              <>Click a species to view its timeseries</>
+            {selectedSpecies ? (
+              <>Click a language to view its timeseries</>
             ) : (
-              <>Select one or more languages</>
+              <>Select one species</>
             )}
           </div>
         </div>
@@ -60,34 +49,29 @@ export default function DetailsPanel({
         className="panelBody"
         style={{
           display: "grid",
-          gridTemplateRows: languageLabel ? "auto auto" : "1fr",
+          gridTemplateRows: selectedSpecies ? "auto auto" : "1fr",
           gap: 8,
           minHeight: 0,
           paddingTop: 8,
         }}
       >
-        {!languageLabel ? (
+        {!selectedSpecies ? (
           <div className="note" style={{ padding: "2rem", textAlign: "center" }}>
-            Select one or more languages to view species data.
+            Select a species to view the languages where it appears most.
           </div>
         ) : (
           <>
-            {topSpecies.length === 0 ? (
+            {topLanguages.length === 0 ? (
               <div className="note" style={{ padding: "2rem", textAlign: "center" }}>
-                No species data found for the selected languages and time range.
+                No language data found for the selected species and time range.
               </div>
             ) : (
-              <div
-                className="card"
-                style={{
-                  alignSelf: "start",
-                }}
-              >
+              <div className="card">
                 <div className="cardHeader" style={{ padding: "10px 12px" }}>
                   <div>
-                    <div className="cardTitle">Top 20 Species</div>
+                    <div className="cardTitle">Top 20 Languages</div>
                     <div className="cardSubtitle">
-                      Click a species to update the timeseries
+                      Click a language to update the timeseries. Click again to return to the overall trend.
                     </div>
                   </div>
                 </div>
@@ -103,67 +87,45 @@ export default function DetailsPanel({
                   }}
                 >
                   <ul className="list">
-                    {topSpecies.map((row, idx) => {
-                      const speciesColor = getTypeColor(row.type, accentColor);
-
-                      const isSelected =
-                        selectedSpecies &&
-                        (selectedSpecies.id === row.id ||
-                          selectedSpecies.latin_name === row.latin_name);
+                    {topLanguages.map((row, idx) => {
+                      const isSelected = selectedLanguageCode === row.code;
 
                       return (
                         <li
-                          key={row.id ?? `${row.latin_name}-${idx}`}
+                          key={`${row.code}-${idx}`}
                           className="listItem"
-                          onClick={() => onSelectSpecies(isSelected ? null : row)}
+                          onClick={() =>
+                            onSelectLanguageCode(isSelected ? null : row.code)
+                          }
                           style={{
                             cursor: "pointer",
-                            background: isSelected ? `${speciesColor}1A` : "transparent",
+                            background: isSelected ? `${accentColor}1A` : "transparent",
                             borderRadius: 10,
                             paddingTop: 8,
                             paddingBottom: 8,
-                            borderLeft: `4px solid ${speciesColor}`,
+                            borderLeft: `4px solid ${accentColor}`,
                           }}
                         >
                           <div
                             className="rank"
                             style={{
-                              background: `${speciesColor}22`,
-                              border: `1px solid ${speciesColor}55`,
-                              color: "rgba(255,255,255,0.92)",
+                              background: `${accentColor}22`,
+                              border: `1px solid ${accentColor}55`,
                             }}
                           >
                             {idx + 1}
                           </div>
 
                           <div className="listMain">
-                            <div className="listTitle">{row.latin_name}</div>
+                            <div className="listTitle">{row.name}</div>
                             <div className="listSubtitle">
-                              species_id: <span className="mono">{row.id}</span>
-                              {row.type ? (
-                                <>
-                                  {" "}
-                                  · type:{" "}
-                                  <span
-                                    className="mono"
-                                    style={{
-                                      color: speciesColor,
-                                      fontWeight: 700,
-                                    }}
-                                  >
-                                    {row.type}
-                                  </span>
-                                </>
-                              ) : null}
+                              code: <span className="mono">{row.code}</span>
                             </div>
                           </div>
 
                           <div
                             className="listValue"
-                            style={{
-                              color: speciesColor,
-                              fontWeight: 700,
-                            }}
+                            style={{ color: accentColor, fontWeight: 700 }}
                           >
                             {formatNumber(row.pageviews)}
                           </div>
@@ -175,13 +137,7 @@ export default function DetailsPanel({
               </div>
             )}
 
-            <div
-              className="card"
-              style={{
-                alignSelf: "start",
-                marginTop: 0,
-              }}
-            >
+            <div className="card" style={{ marginTop: 0 }}>
               <div
                 className="cardHeader"
                 style={{
@@ -198,7 +154,7 @@ export default function DetailsPanel({
                   type="button"
                   className="btn"
                   style={{ flex: "0 0 auto", minWidth: 130 }}
-                  onClick={() => onOpenAnalysis(selectedSpecies)}
+                  onClick={onOpenAnalysis}
                 >
                   Open analysis
                 </button>
@@ -212,11 +168,7 @@ export default function DetailsPanel({
                 ) : (
                   <>
                     <MiniSparkline
-                      color={
-                        selectedSpecies?.type
-                          ? getTypeColor(selectedSpecies.type, accentColor)
-                          : accentColor
-                      }
+                      color={accentColor}
                       points={timeseries.map((row) => ({
                         label: row.month,
                         value: row.pageviews,

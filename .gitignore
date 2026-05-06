@@ -6,3 +6,4 @@
 __pycache__
 languages.csv
 iso-639-3-macrolanguages.tab
+.vscode/
